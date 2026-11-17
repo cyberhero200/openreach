@@ -1,7 +1,6 @@
 // Shared helpers for the Gmail serverless functions.
 // Files starting with "_" are not exposed as routes by Vercel.
 import nodemailer from 'nodemailer';
-import { ImapFlow } from 'imapflow';
 
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -19,15 +18,24 @@ export function creds(req) {
   return { user, pass };
 }
 
-export function smtp({ user, pass }) {
+function transport({ user, pass }, port) {
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com', port: 465, secure: true,
+    host: 'smtp.gmail.com', port, secure: port === 465, requireTLS: port !== 465,
     auth: { user, pass },
-    connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 25000,
+    connectionTimeout: 15000, greetingTimeout: 12000, socketTimeout: 30000,
   });
 }
+const isNetErr = (e) => /ETIMEDOUT|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|timeout|socket/i.test(String(e?.code || '') + ' ' + String(e?.message || ''));
+
+// Runs an SMTP action on port 465 (SSL); if the network blocks it, retries on 587 (STARTTLS).
+export async function withSmtp(c, fn) {
+  try { return await fn(transport(c, 465)); }
+  catch (e) { if (!isNetErr(e)) throw e; console.warn('SMTP 465 failed, trying 587:', e.code || e.message); return fn(transport(c, 587)); }
+}
+export const smtp = (c) => transport(c, 465);
 
 export async function withImap({ user, pass }, fn) {
+  const { ImapFlow } = await import('imapflow');
   const client = new ImapFlow({
     host: 'imap.gmail.com', port: 993, secure: true,
     auth: { user, pass }, logger: false,
@@ -43,8 +51,10 @@ function friendly(e) {
     return { status: 401, error: 'Gmail did not accept the login. Use your full Gmail address and a 16-letter App Password, not your normal password.' };
   if (/Daily user sending limit|5\.4\.5/i.test(t))
     return { status: 429, error: 'Gmail daily sending limit reached. Try again tomorrow.' };
-  if (/ETIMEDOUT|ECONNRESET|timeout/i.test(t))
-    return { status: 504, error: 'Gmail took too long to answer. Try again in a moment.' };
+  if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|timeout/i.test(t + ' ' + (e?.code || '')))
+    return { status: 504, error: 'Could not reach Gmail from the server (network timeout). Try again in a moment.' };
+  if (/IMAP access is disabled|Web login required|WEBALERT|Please log in via your web browser/i.test(t))
+    return { status: 403, error: 'Google blocked the sign-in as unusual. Open gmail.com in your browser, confirm it was you, then try again.' };
   return { status: e?.status || 500, error: t.slice(0, 300) };
 }
 
@@ -53,6 +63,10 @@ export function route(fn) {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') { res.status(405).json({ error: 'Use POST.' }); return; }
     try { res.status(200).json(await fn(req)); }
-    catch (e) { const f = friendly(e); res.status(f.status).json({ error: f.error }); }
+    catch (e) {
+      const f = friendly(e);
+      if (f.status >= 500) console.error(`[${req.url}]`, e?.code || '', e?.responseText || e?.response || e?.stack || e);
+      res.status(f.status).json({ error: f.error });
+    }
   };
 }

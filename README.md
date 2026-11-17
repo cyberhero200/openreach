@@ -81,6 +81,20 @@ Without a key, OpenReach still works with simple templates.
 - A free Gmail account can send about 500 emails a day. OpenReach spaces batch sends 25 seconds apart by default.
 - Vercel's free plan accepts requests up to 4.5 MB, so keep the CV PDF under 2.5 MB. The app enforces this.
 
+## If emails don't send
+
+Open **Settings → Check sending**. It tests each step and tells you exactly what's wrong:
+
+| Message | Fix |
+|---|---|
+| Vercel Deployment Protection is blocking the server | Vercel → Project → Settings → Deployment Protection → turn off **Vercel Authentication**, then redeploy. Or use the production domain. |
+| Server functions are missing | The latest Vercel deployment failed. Open it, fix the error, redeploy. |
+| Gmail login failed | Use a 16-letter **App Password**, not your normal password. 2-Step Verification must be on. |
+| Google blocked the sign-in as unusual | Open gmail.com, confirm "It was me", then try again. |
+| Gmail isn't connected | Press **Connect Gmail**. Without it, "Open in Gmail" only opens a draft you send yourself. |
+
+Function errors also show up in Vercel → Project → **Logs**.
+
 ## Run locally
 
 ```bash

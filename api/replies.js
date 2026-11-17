@@ -1,5 +1,4 @@
 // Looks in the user's inbox ONLY for messages from the professors they emailed.
-import { simpleParser } from 'mailparser';
 import { creds, withImap, route, EMAIL_RE } from './_lib.js';
 
 function cleanReply(text) {
@@ -16,6 +15,7 @@ function cleanReply(text) {
 
 export default route(async (req) => {
   const c = creds(req);
+  const { simpleParser } = await import('mailparser');
   const addresses = [...new Set((req.body?.addresses || [])
     .map(a => String(a).trim().toLowerCase()).filter(a => EMAIL_RE.test(a)))].slice(0, 300);
   if (!addresses.length) return { replies: [] };

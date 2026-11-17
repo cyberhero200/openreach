@@ -1,8 +1,8 @@
 // Checks that the Gmail address + App Password work, without sending anything.
-import { creds, smtp, route } from './_lib.js';
+import { creds, withSmtp, route } from './_lib.js';
 
 export default route(async (req) => {
   const c = creds(req);
-  await smtp(c).verify();
+  await withSmtp(c, (t) => t.verify());
   return { ok: true, email: c.user };
 });

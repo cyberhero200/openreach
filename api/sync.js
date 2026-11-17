@@ -1,7 +1,5 @@
 // Saves / loads the user's OpenReach data as one message under a private "OpenReach" label
 // in their own Gmail. No database needed, and it follows them to any device.
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { simpleParser } from 'mailparser';
 import { creds, withImap, route, HttpError } from './_lib.js';
 
 const BOX = 'OpenReach';
@@ -10,6 +8,8 @@ const FILE = 'openreach.json';
 export default route(async (req) => {
   const c = creds(req);
   const { action, data } = req.body || {};
+  const { default: MailComposer } = await import('nodemailer/lib/mail-composer');
+  const { simpleParser } = await import('mailparser');
   if (!['pull', 'push'].includes(action)) throw new HttpError(400, 'Unknown action.');
 
   return withImap(c, async (client) => {

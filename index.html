@@ -420,6 +420,12 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
       <div class="row wrap" id="gmailBtns"></div>
     </div>
     <div class="sheet">
+      <h3>Check sending</h3>
+      <p class="muted small" style="margin-top:-6px">Runs every step of sending and shows exactly where it fails. The last step sends one short test email to yourself.</p>
+      <button class="btn primary" id="diagBtn" onclick="runDiag(this)">Check sending</button>
+      <ol class="steps small" id="diagOut" style="margin-top:12px"></ol>
+    </div>
+    <div class="sheet">
       <h3>Paper search</h3>
       <div class="grid">
         <label>Your email <span class="hint">(gets faster OpenAlex responses)</span><input data-bind="settings.oaMail" placeholder="you@gmail.com"></label>
@@ -452,7 +458,7 @@ const words=t=>String(t||'').trim().split(/\s+/).filter(Boolean).length;
 const days=t=>Math.max(0,Math.floor((Date.now()-t)/864e5));
 const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
 const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e||'');
-function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='show'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>t.className='',4200)}
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='show'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>t.className='',bad?8000:4200)}
 
 const TYPES={research:'Ask about research opportunities or joining their lab (beginner tasks like literature review, data work, coding are fine)',summer:'Ask about a summer research internship in their lab',question:"Ask a specific question about their research (the student's question is the main point, no job request)",mentorship:'Ask for mentorship or guidance on a student project or thesis',feedback:"Share the student's own project and ask for short feedback",grad:'Ask about graduate (MS/PhD) openings and fit with their group',remote:'Ask about a remote or part-time research assistant role',custom:"Custom: follow the student's question and instructions exactly"};
 const TYPE_LABEL={research:'A research or lab position',summer:'A summer internship',question:'An answer to my question',mentorship:'Mentorship on my project',feedback:'Feedback on my project',grad:'A grad school (MS/PhD) spot',remote:'Remote research assistant work',custom:'Something else (describe below)'};
@@ -510,8 +516,12 @@ $$('.rail .nav').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 async function api(path,body={}){let r;
  try{r=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:SEC.gmail,appPassword:SEC.appPass,...body})})}
  catch{throw new Error(location.protocol==='file:'?'Open the site from its Vercel link. Email features do not work from a file on your computer':'Could not reach the server. Check your internet and try again')}
- const j=await r.json().catch(()=>null);
- if(!j)throw new Error(r.status===404?'Email server not found. Deploy the repo on Vercel so the /api functions exist':'Server error '+r.status);
+ const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
+ if(!j){
+  if(/vercel\.com\/sso|Authentication Required|_vercel_sso|vercel-authentication/i.test(raw)||r.status===401)throw new Error('Vercel is blocking the server functions (Deployment Protection). In Vercel → Settings → Deployment Protection, turn off Vercel Authentication, or open your production link');
+  if(/FUNCTION_INVOCATION_FAILED|FUNCTION_INVOCATION_TIMEOUT/.test(raw))throw new Error(/TIMEOUT/.test(raw)?'The server timed out talking to Gmail. Try again':'The email server crashed. Run Settings → Check sending, then send me the result');
+  if(r.status===413||/FUNCTION_PAYLOAD_TOO_LARGE/.test(raw))throw new Error('Too large to send. Use a smaller CV PDF (under 2.5 MB)');
+  throw new Error(r.status===404?'Email server not found. Deploy the repo on Vercel so the /api functions exist':`Server error ${r.status}`)}
  if(!r.ok)throw new Error(j.error||'Server error '+r.status);return j}
 const connected=()=>!!(USER&&SEC.appPass&&ACCT===USER.email);
 async function connectGmail(){const email=$('#lgEmail').value.trim().toLowerCase(),pass=$('#lgPass').value.replace(/\s+/g,'');
@@ -550,6 +560,21 @@ async function syncNow(b){b.disabled=true;try{const remote=(await api('sync',{ac
   if(remote&&(remote.updatedAt||0)>(S.updatedAt||0)){S=merge(structuredClone(DEF),remote);save(false);enterApp();toast('Loaded newer data from your Gmail')}
   else{dirty=true;await pushSync();toast('Saved to your Gmail')}}catch(e){toast(e.message,true)}b.disabled=false}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&dirty)pushSync()});
+
+async function runDiag(b){const out=$('#diagOut');out.innerHTML='';b.disabled=true;
+ const step=(ok,txt)=>{out.insertAdjacentHTML('beforeend',`<li style="color:${ok===null?'var(--mut)':ok?'var(--sage)':'var(--stamp)'}">${ok===null?'…':ok?'✓':'✗'} ${txt}</li>`)};
+ try{
+  if(location.protocol==='file:'){step(false,'You opened the file from your computer. Open your Vercel link instead: sending only works there.');return}
+  let hr,hj=null,raw='';try{hr=await fetch('/api/health',{cache:'no-store'});raw=await hr.text();try{hj=JSON.parse(raw)}catch{}}catch(e){step(false,'Could not reach your site\'s server: '+esc(e.message));return}
+  if(!hj){step(false,/Authentication Required|vercel\.com\/sso|_vercel_sso/i.test(raw)||hr.status===401?'Vercel Deployment Protection is blocking the server. In Vercel → Settings → Deployment Protection, turn off "Vercel Authentication", then redeploy.':`Server functions are missing (HTTP ${hr.status}). Check that the latest Vercel deployment finished with "Ready".`);return}
+  if(!hj.ok){step(false,'Server is up, but a library failed to load: '+esc(JSON.stringify(hj.libs)));return}
+  step(true,`Server is running (Node ${esc(hj.node)}, region ${esc(hj.region)})`);
+  if(!SEC.gmail||!SEC.appPass){step(false,'No Gmail connected. Click "Connect Gmail" and enter your Gmail address and 16-letter App Password.');return}
+  try{await api('login');step(true,`Gmail accepted the App Password for ${esc(SEC.gmail)}`)}catch(e){step(false,'Gmail login failed: '+esc(e.message));return}
+  if(!confirm(`Send a short test email to ${SEC.gmail}?`)){step(null,'Test email skipped');return}
+  try{await api('send',{to:SEC.gmail,subject:'OpenReach test email',text:`It works! OpenReach can send email from ${SEC.gmail}.\n\nSent ${new Date().toLocaleString()}.`,fromName:S.profile.name||''});
+   step(true,`Test email sent. Check the inbox of ${esc(SEC.gmail)} (it can take a minute)`)}catch(e){step(false,'Sending failed: '+esc(e.message))}
+ }finally{b.disabled=false}}
 
 /* ================= BOOT ================= */
 function showLogin(){$('#app').hidden=true;$('#login').hidden=false;$('#lgEmail').value=SEC.gmail||''}
@@ -953,10 +978,10 @@ const Q=id=>S.queue.find(q=>q.id===id);
 const isThread=q=>q.kind==='followup'||q.kind==='reply';
 function qset(id,k,v){const q=Q(id);if(!q)return;q[k]=v;save();if(k==='body'){const el=$(`#wc-${id}`);if(el)el.textContent=words(v)+' words'}if(k==='ready')renderQBar()}
 function renderQBar(){const n=S.queue.filter(q=>q.ready).length;
- $('#qBar').innerHTML=S.queue.length?`<span class="muted">${S.queue.length} draft${S.queue.length>1?'s':''}, ${n} ready</span>
+ $('#qBar').innerHTML=(S.queue.length&&!connected()?`<div class="note warn" style="width:100%">Gmail isn't connected, so OpenReach can't send by itself. <a href="#" onclick="showLogin();return false">Connect Gmail</a> to send with one click and attach your CV. Without it, "Open in Gmail" only opens a draft that you send yourself.</div>`:'')+(S.queue.length?`<span class="muted">${S.queue.length} draft${S.queue.length>1?'s':''}, ${n} ready</span>
   <button class="btn end" onclick="S.queue.forEach(q=>q.ready=true);save();renderQueue()">Mark all ready</button>
   ${connected()?`<button class="btn primary" id="sendAllBtn" onclick="sendAll()" ${n?'':'disabled'}>Send ${n||''} ready</button>`:`<button class="btn primary" onclick="showLogin()">Connect Gmail to send</button>`}
-  <div id="batch" style="width:100%"></div>`:''}
+  <div id="batch" style="width:100%"></div>`:'')}
 function renderQueue(){renderQBar();const el=$('#queueList');
  if(!S.queue.length){el.innerHTML=`<div class="empty"><h3>Nothing to review</h3><p>Write drafts in <a href="#" onclick="showTab('compose');return false">Write</a> and they'll show up here.</p></div>`;return}
  const cv=S.profile.attachCv&&S.profile.cv;
@@ -969,6 +994,7 @@ function renderQueue(){renderQBar();const el=$('#queueList');
   <label>Subject<input value="${esc(q.subject)}" oninput="qset('${q.id}','subject',this.value)"></label>
   <label>Message<textarea rows="12" oninput="qset('${q.id}','body',this.value)">${esc(q.body)}</textarea></label>
   <div class="row wrap" style="margin:-4px 0 14px"><span class="muted small" id="wc-${q.id}">${words(q.body)} words</span>${cv&&!isThread(q)?`<span class="att">Attached: ${esc(cv.name)}</span>`:''}</div>
+  ${q.err?`<div class="note warn">Not sent: ${esc(q.err)} <a href="#" onclick="showTab('settings');return false">Run Check sending</a></div>`:''}
   ${q.opened?`<div class="note">Did you send it in Gmail? Press "Mark as sent" so it moves to Messages.</div>`:''}
   <div class="row wrap">
    <label class="check" style="margin:0 8px 0 0"><input type="checkbox" ${q.ready?'checked':''} onchange="qset('${q.id}','ready',this.checked)"> Ready to send</label>
@@ -987,7 +1013,7 @@ function attachmentFor(q){const c=S.profile.cv;return S.profile.attachCv&&c&&!is
 async function gmailSend(q){const j=await api('send',{to:q.to,subject:q.subject,text:q.body,fromName:S.profile.name||'',attachment:attachmentFor(q),inReplyTo:q.inReplyTo||'',references:q.references||q.inReplyTo||''});
  return{msgId:j.messageId,api:true}}
 async function sendOne(id,b){const q=Q(id);if(!preSend(q))return;if(!confirm(`Send this email to ${q.to} from ${USER.email}?`))return;
- b.disabled=true;b.textContent='Sending…';try{markSent(id,await gmailSend(q));toast(`Sent to ${q.prof.name}`)}catch(e){toast('Not sent: '+e.message,true);b.disabled=false;b.textContent='Send now'}}
+ b.disabled=true;b.textContent='Sending…';try{markSent(id,await gmailSend(q));toast(`Sent to ${q.prof.name}`)}catch(e){q.err=e.message;save();renderQueue();toast('Not sent: '+e.message,true)}}
 let STOP=false;
 async function sendAll(){const L=S.queue.filter(q=>q.ready),ok=L.filter(q=>preSend(q,true)),skip=L.length-ok.length,gap=Math.max(5,+S.settings.gapSec||25);
  if(!ok.length)return toast(skip?'The ready drafts are missing emails or go to professors you already emailed':'Tick "Ready to send" on drafts you have checked',true);
@@ -995,7 +1021,7 @@ async function sendAll(){const L=S.queue.filter(q=>q.ready),ok=L.filter(q=>preSe
  STOP=false;const box=$('#batch');let sent=0;
  for(const[i,q]of ok.entries()){if(STOP)break;
   box.innerHTML=`<div class="note row">Sending ${i+1} of ${ok.length} to ${esc(q.prof.name)}… <button class="btn end" onclick="STOP=true">Stop</button></div><div class="progress"><i style="width:${i/ok.length*100}%"></i></div>`;
-  try{markSent(q.id,await gmailSend(q),true);sent++}catch(e){toast(`${q.prof.name}: ${e.message}`,true);if(/limit|login|App Password|reach|not found/i.test(e.message))break}
+  try{markSent(q.id,await gmailSend(q),true);sent++}catch(e){q.err=e.message;save();toast(`${q.prof.name}: ${e.message}`,true);if(/limit|login|App Password|reach|not found/i.test(e.message))break}
   if(i<ok.length-1)for(let s=gap;s>0&&!STOP;s--){const n=$('#batch .note');if(n)n.firstChild.textContent=`Sent ${sent} of ${ok.length}. Next in ${s}s… `;await sleep(1000)}}
  renderQueue();toast(`Sent ${sent} email${sent===1?'':'s'}`)}
 function openGmail(id){const q=Q(id);if(!preSend(q))return;

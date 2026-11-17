@@ -1,5 +1,5 @@
 // Sends ONE email the user reviewed, from their own Gmail (it also lands in their Sent folder).
-import { creds, smtp, route, HttpError, EMAIL_RE } from './_lib.js';
+import { creds, withSmtp, route, HttpError, EMAIL_RE } from './_lib.js';
 
 export default route(async (req) => {
   const c = creds(req);
@@ -17,7 +17,7 @@ export default route(async (req) => {
     });
   }
 
-  const info = await smtp(c).sendMail({
+  const info = await withSmtp(c, (t) => t.sendMail({
     from: fromName ? { name: String(fromName).slice(0, 80), address: c.user } : c.user,
     to: rcpt,
     subject: String(subject).slice(0, 300),
@@ -25,6 +25,7 @@ export default route(async (req) => {
     inReplyTo: inReplyTo || undefined,
     references: references || undefined,
     attachments,
-  });
+  }));
+  if (!info.accepted?.length) throw new HttpError(502, 'Gmail did not accept the recipient: ' + (info.rejected || []).join(', '));
   return { ok: true, messageId: info.messageId };
 });
