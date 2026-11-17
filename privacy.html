@@ -22,30 +22,30 @@ a{color:#1F3FA6}.muted{color:#5B6478}
 <p>OpenReach helps students find university researchers and write and send outreach emails. This policy explains what data the app uses and where it goes. In short: your data stays in your browser and your own Google account. We do not run a server that stores it, and we never sell it.</p>
 
 <h2>Data you enter</h2>
-<p>Your profile, resume (text and PDF), saved prompts, selected professors, drafts and message history are stored in your browser's local storage. If you sign in with Google, a copy is also saved in a private, app-only folder in your own Google Drive (the "appDataFolder"), so you can use it on other devices. Only OpenReach running in your browser can access that folder. You can delete it at any time from Google Drive settings under "Manage apps".</p>
+<p>Your profile, resume (text and PDF), saved prompts, selected professors, drafts and message history are stored in your browser's local storage. If you connect Gmail, a copy is also saved as a single message under a private "OpenReach" label in your own Gmail, so you can use it on other devices. Deleting that message erases the copy.</p>
 
-<h2>Google account data</h2>
-<p>When you sign in, OpenReach requests these permissions:</p>
+<h2>Your Gmail App Password</h2>
+<p>To send email from your account, OpenReach uses a Gmail App Password that you create and paste in. It is stored only in your browser. With each action you take, your browser sends it over HTTPS to OpenReach's own serverless functions, which connect to Gmail and then forget it. It is never written to a database or log. OpenReach uses it only to:</p>
 <ul>
-  <li><b>Basic profile and email address</b>, to show who is signed in and to put your address in the "From" line.</li>
-  <li><b>Send email on your behalf (gmail.send)</b>, used only when you press "Send now" or "Send ready" on drafts you reviewed. OpenReach cannot read, search, or delete your emails.</li>
-  <li><b>App data folder in Google Drive (drive.appdata)</b>, used only to save and load your OpenReach data. OpenReach cannot see any other files in your Drive.</li>
+  <li><b>Send</b> the emails you reviewed and approved.</li>
+  <li><b>Look for replies</b> in your inbox, and only from the email addresses of professors you wrote to through OpenReach. No other email is read or stored.</li>
+  <li><b>Save and load</b> your OpenReach data under the "OpenReach" label.</li>
 </ul>
-<p>OpenReach's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is never used for advertising, never sold, never transferred to third parties except as needed to provide the features above, and never used to train AI models.</p>
+<p>You can cut access at any time by deleting the App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>, or by pressing "Disconnect" in OpenReach.</p>
 
 <h2>Third-party services your browser contacts</h2>
 <ul>
   <li><b>OpenAlex</b> (api.openalex.org): your search keywords and selected universities, to find researchers.</li>
   <li><b>The AI provider you choose</b> (for example Google Gemini or Groq), using your own API key: your profile, resume text, saved prompt, and professor details, to write drafts and search the web. Their own privacy policies apply.</li>
-  <li><b>Google Fonts, cdnjs and Google Identity Services</b>, to load fonts, the PDF reader, and sign-in.</li>
+  <li><b>Google Fonts and cdnjs</b>, to load fonts and the PDF reader.</li>
 </ul>
 <p>API keys you enter are stored only in your browser and are never synced or sent anywhere except to the provider they belong to.</p>
 
 <h2>Your choices</h2>
 <ul>
-  <li>Use OpenReach without signing in. Your data then stays only on your device.</li>
+  <li>Use OpenReach without connecting Gmail. Your data then stays only on your device.</li>
   <li>Delete local data with "Delete all data on this device" in Settings.</li>
-  <li>Revoke OpenReach's access at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</li>
+  <li>Delete the App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a> to revoke access.</li>
 </ul>
 
 <h2>Children</h2>
