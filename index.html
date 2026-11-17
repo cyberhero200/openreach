@@ -29,7 +29,7 @@ p{margin:0 0 12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 14px}
 label{display:block;font-size:13.5px;font-weight:600;margin-bottom:12px}
 label .hint{font-weight:400;color:var(--mut)}
-input,select,textarea{width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+input,select,textarea{width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;font-weight:400;background:#fff;color:var(--ink)}
 textarea{resize:vertical;line-height:1.5}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ox);box-shadow:0 0 0 3px var(--ox-soft)}
 input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--ox);flex:none}
@@ -136,6 +136,13 @@ pre.mail{white-space:pre-wrap;font:inherit;font-size:14.5px;background:#F7F9FC;b
 .who-l{font-size:12.5px;font-weight:700;color:var(--mut);margin-top:8px}
 .progress{height:6px;background:#DCE2EC;border-radius:6px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--ox);width:0;transition:width .4s}
 .sources{font-size:13px;margin-top:4px}.sources a{margin-right:10px}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.ex{border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px;background:#FCFDFE}
+.ex h3{font-size:18px}.ex p{margin:0}.ex .btn{align-self:flex-start;margin-top:auto}
+.ex pre.mail{font-family:var(--serif);font-size:14px}
+.draft-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+.draft-row.on{border-color:var(--ox);background:#F8FAFF}
+#edBody{font-family:var(--serif);font-size:16.5px;line-height:1.65}
 #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-weight:600;opacity:0;transition:.22s;pointer-events:none;max-width:92vw;z-index:99}
 #toast.show{opacity:1;transform:translate(-50%,0)}#toast.bad{background:var(--stamp)}
 code{background:#EEF1F7;padding:1px 5px;border-radius:5px;font-size:13px}
@@ -198,10 +205,11 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
   <aside class="rail">
     <div class="brand">OpenReach</div>
     <button class="nav" data-tab="profile"><span class="num">1</span>You &amp; your CV</button>
-    <button class="nav" data-tab="find"><span class="num">2</span>Find professors</button>
-    <button class="nav" data-tab="compose"><span class="num">3</span>Write <span class="n" id="nSel"></span></button>
-    <button class="nav" data-tab="queue"><span class="num">4</span>Review &amp; send <span class="n" id="nQ"></span></button>
-    <button class="nav" data-tab="messages"><span class="num">5</span>Messages <span class="n" id="nH"></span></button>
+    <button class="nav" data-tab="drafts"><span class="num">2</span>Email drafts</button>
+    <button class="nav" data-tab="find"><span class="num">3</span>Find professors</button>
+    <button class="nav" data-tab="compose"><span class="num">4</span>Write <span class="n" id="nSel"></span></button>
+    <button class="nav" data-tab="queue"><span class="num">5</span>Review &amp; send <span class="n" id="nQ"></span></button>
+    <button class="nav" data-tab="messages"><span class="num">6</span>Messages <span class="n" id="nH"></span></button>
     <button class="nav" data-tab="settings"><span class="num">⚙</span>Settings</button>
     <div class="acct" id="acct"></div>
   </aside>
@@ -220,8 +228,12 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
         <label>School or university<input data-bind="profile.school" placeholder="Presidential School in Tashkent"></label>
         <label>Major or main subjects<input data-bind="profile.major" placeholder="Computer science, math"></label>
         <label>Links<input data-bind="profile.links" placeholder="github.com/you"></label>
+        <label>Grade or year<input data-bind="profile.grade" placeholder="11th grader, junior, 2nd-year student"></label>
+        <label>City and country<input data-bind="profile.location" placeholder="Tashkent, Uzbekistan"></label>
+        <label>Relevant courses<input data-bind="profile.courses" placeholder="AP Biology, linear algebra, Python"></label>
       </div>
       <label>Research interests<textarea rows="2" data-bind="profile.interests" placeholder="computer vision for medical imaging, low-cost robotics"></textarea></label>
+      <label>Experience and projects <span class="hint">(fills {{experience}} in your drafts)</span><textarea rows="2" data-bind="profile.experience" placeholder="Python and PyTorch, a science-fair project detecting plant disease from leaf photos"></textarea></label>
     </div>
 
     <div class="sheet">
@@ -239,7 +251,41 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
       <p class="muted small" style="margin:8px 0 14px">Your own instructions for how emails should sound or what they must include. Pick one in Write and the AI follows it for every professor.</p>
       <div id="promptList"></div>
     </div>
-    <div class="row"><button class="btn primary lg end" onclick="showTab('find')">Find professors</button></div>
+    <div class="row"><button class="btn primary lg end" onclick="showTab('drafts')">Next: your email draft</button></div>
+  </section>
+
+  <!-- DRAFTS -->
+  <section class="tab" id="tab-drafts" hidden>
+    <h2>Email drafts</h2>
+    <p class="lede">Write your email once with placeholders like <code>{{professor_last_name}}</code>. When you generate, OpenReach fills them in for every professor from your profile and their research, and keeps the rest in your words.</p>
+    <div class="sheet">
+      <h3>Start from an example</h3>
+      <p class="muted small" style="margin-top:-6px">Emails that get replies are short, specific and easy to say yes to. Pick one and make it yours.</p>
+      <div class="ex-grid" id="exList"></div>
+    </div>
+    <div class="sheet">
+      <div class="row wrap"><h3 class="grow" style="margin:0">Your drafts</h3><button class="btn" onclick="newDraft()">New blank draft</button></div>
+      <p class="muted small" style="margin:6px 0 12px">The active draft is used when you choose "Use my draft" in Write.</p>
+      <div id="draftList"></div>
+    </div>
+    <div class="sheet" id="draftEditor" hidden>
+      <h3>Edit draft</h3>
+      <div class="grid">
+        <label>Title<input id="edTitle" placeholder="My outreach email"></label>
+        <label>Subject <span class="hint">(optional, placeholders work here too)</span><input id="edSubject" placeholder="Interest in your {{research_topic}} research" oninput="checkPh()" onfocus="PH_TARGET='#edSubject'"></label>
+      </div>
+      <div class="small" style="font-weight:600;margin-bottom:2px">Placeholders <span class="muted" style="font-weight:400">(click to insert where your cursor is, hover to see what fills it)</span></div>
+      <div class="chips" id="phChips"></div>
+      <label>Email body<textarea id="edBody" rows="16" oninput="checkPh()" onfocus="PH_TARGET='#edBody'"></textarea></label>
+      <div class="note warn small" id="edWarn"></div>
+      <div class="row wrap">
+        <button class="btn primary" onclick="saveDraft(true)">Save and use this draft</button>
+        <button class="btn" onclick="saveDraft(false)">Save</button>
+        <button class="btn" onclick="previewDraft(this)">Preview for a professor</button>
+        <button class="btn quiet end" onclick="closeEditor()">Close</button>
+      </div>
+      <div id="edPreview" style="margin-top:12px"></div>
+    </div>
   </section>
 
   <!-- FIND -->
@@ -280,7 +326,7 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
   <!-- COMPOSE -->
   <section class="tab" id="tab-compose" hidden>
     <h2>Write</h2>
-    <p class="lede">Choose what you are asking for, add your own question, and get one personal draft per professor.</p>
+    <p class="lede">Let the AI write each email, or use your own draft. Either way you get one personal email per professor.</p>
     <div class="sheet">
       <div class="row wrap"><h3 class="grow" style="margin:0">Who you're writing to</h3>
         <button class="btn" id="findAllBtn" onclick="findAllEmails(this)">Find missing emails</button>
@@ -297,7 +343,10 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
       <div id="selList" style="margin-top:8px"></div>
     </div>
     <div class="sheet">
-      <div class="grid">
+      <div class="small" style="font-weight:600;margin-bottom:6px">How should each email be written?</div>
+      <div class="seg" id="modeSeg"><button data-cm="ai" onclick="setCMode('ai')">AI writes each one</button><button data-cm="draft" onclick="setCMode('draft')">Use my draft</button></div>
+      <div class="note small" id="draftModeInfo" hidden></div>
+      <div class="grid aiOnly">
         <label>What you're asking for<select data-bind="compose.type" id="typeSel"></select></label>
         <label>Saved prompt<select id="promptSel" onchange="S.compose.promptId=this.value;save()"></select></label>
         <label>Tone<select data-bind="compose.tone"><option>Respectful &amp; warm</option><option>Formal</option><option>Confident &amp; direct</option><option>Humble &amp; curious</option></select></label>
@@ -306,12 +355,7 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
       </div>
       <label>Your question or message <span class="hint">(included in every email, adapted to each professor)</span>
         <textarea rows="3" data-bind="compose.question" placeholder="I'm building a low-cost prosthetic hand with EMG sensors. Which signal-processing approach would you suggest for a beginner?"></textarea></label>
-      <label>One-off instructions <span class="hint">(optional)</span><input data-bind="compose.notes" placeholder="Mention I'm free June to August and can work remotely"></label>
-      <label class="check"><input type="checkbox" data-bind="compose.useTpl" data-onchange="tplVis"> Use my fixed template and only swap professor details</label>
-      <div id="tplBox" hidden style="margin-top:12px">
-        <label>Template <span class="hint">First line is the subject. Placeholders: <code>{{prof_last}}</code> <code>{{prof_name}}</code> <code>{{university}}</code> <code>{{paper}}</code> <code>{{topic}}</code> <code>{{my_name}}</code> <code>{{my_school}}</code> <code>{{question}}</code> <code>{{ai_line}}</code></span>
-          <textarea rows="10" data-bind="compose.tpl"></textarea></label>
-      </div>
+      <label class="aiOnly">One-off instructions <span class="hint">(optional)</span><input data-bind="compose.notes" placeholder="Mention I'm free June to August and can work remotely"></label>
       <div class="row wrap" style="margin-top:6px">
         <button class="btn primary lg" id="genBtn" onclick="generateAll()">Write drafts</button>
         <span class="muted small" id="aiMode"></span>
@@ -349,19 +393,21 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
     <h2>Settings</h2>
     <p class="lede">API keys stay in this browser only and are never synced. Every person using your site brings their own free key, so it costs you nothing to host.</p>
     <div class="sheet">
-      <h3>AI for writing</h3>
+      <h3>AI</h3>
+      <p class="muted small" style="margin-top:-6px">Pick a provider and paste a free key. OpenReach finds the best model your key can use, and switches on its own if a model gets retired.</p>
       <div class="grid">
-        <label>Provider<select data-bind="settings.provider" data-onchange="providerPreset">
-          <option value="gemini">Google Gemini (free)</option><option value="groq">Groq (free)</option><option value="openrouter">OpenRouter (free models)</option><option value="openai">Other OpenAI-compatible API</option></select></label>
-        <label>Model<input data-bind="settings.model"></label>
-        <label>API key<input type="password" data-bind="sec.apiKey" placeholder="Paste your key" autocomplete="off"></label>
+        <label>Provider<select data-bind="settings.provider" data-onchange="providerChanged">
+          <option value="gemini">Google Gemini (free, recommended)</option><option value="groq">Groq (free)</option><option value="openrouter">OpenRouter (free models)</option><option value="cerebras">Cerebras (free)</option><option value="mistral">Mistral (free tier)</option><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="custom">Other OpenAI-compatible</option></select></label>
+        <label>API key<input type="password" data-bind="sec.apiKey" data-onchange="keyChanged" placeholder="Paste your key" autocomplete="off"></label>
+        <label>Model<select id="modelSel" onchange="setModel(this.value)"></select></label>
       </div>
-      <label id="baseRow">Base URL<input data-bind="settings.baseUrl"></label>
-      <label id="webKeyRow">Gemini key for web search <span class="hint">(only needed if your writing provider isn't Gemini)</span><input type="password" data-bind="sec.webKey" autocomplete="off"></label>
+      <label id="baseRow">Base URL<input data-bind="settings.baseUrl" placeholder="https://example.com/v1"></label>
+      <label id="webKeyRow">Gemini key for web search <span class="hint">(optional; without it, web search uses your provider if it can)</span><input type="password" data-bind="sec.webKey" data-onchange="keyChanged" autocomplete="off"></label>
+      <div class="note small" id="modelInfo"></div>
       <div class="row wrap">
-        <button class="btn primary" onclick="testAI(this)">Test AI</button>
-        <a class="btn" target="_blank" rel="noopener" href="https://aistudio.google.com/apikey">Get a free Gemini key</a>
-        <a class="btn quiet" target="_blank" rel="noopener" href="https://console.groq.com/keys">Groq key</a>
+        <button class="btn primary" onclick="findBestBtn(this)">Find the best model</button>
+        <button class="btn" onclick="testAI(this)">Test AI</button>
+        <a class="btn quiet" id="keyLink" target="_blank" rel="noopener" href="https://aistudio.google.com/apikey">Get a free key</a>
       </div>
     </div>
     <div class="sheet">
@@ -371,7 +417,7 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
     <div class="sheet">
       <h3>Gmail connection</h3>
       <p class="muted small" id="gmailInfo"></p>
-      <div class="row wrap"><button class="btn" onclick="showLogin()">Connect a different Gmail</button><button class="btn quiet danger" onclick="signOut()">Disconnect</button></div>
+      <div class="row wrap" id="gmailBtns"></div>
     </div>
     <div class="sheet">
       <h3>Paper search</h3>
@@ -393,7 +439,7 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
 
 <script>
 /* ================= CONFIG ================= */
-const OA='https://api.openalex.org', WEB_MODEL='gemini-2.5-flash';
+const OA='https://api.openalex.org';
 
 /* ================= HELPERS ================= */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -415,12 +461,12 @@ const STATUSES=['Sent','Follow-up sent','Replied','Call or interview','Accepted'
 
 /* ================= STATE ================= */
 const DEF={updatedAt:0,
- profile:{name:'',email:'',level:'High school student',school:'',major:'',interests:'',resume:'',links:'',cv:null,attachCv:true},
- settings:{provider:'gemini',model:'gemini-2.5-flash',baseUrl:'',oaMail:'',gapSec:'25'},
+ profile:{name:'',email:'',level:'High school student',school:'',major:'',interests:'',resume:'',links:'',grade:'',location:'',courses:'',experience:'',cv:null,attachCv:true},
+ settings:{provider:'gemini',model:'auto',baseUrl:'',oaMail:'',gapSec:'25',resolved:{},models:[],webModel:''},
  search:{mode:'papers',q:'',insts:[],country:'',year:'2019',hideJunior:true,minWorks:'20'},
- compose:{type:'research',question:'',notes:'',tone:'Respectful & warm',length:'150',lang:'English',useTpl:false,promptId:'',
+ compose:{mode:'ai',type:'research',question:'',notes:'',tone:'Respectful & warm',length:'150',lang:'English',useTpl:false,promptId:'',
   tpl:'Subject: Question about your work on {{topic}}\n\nDear Professor {{prof_last}},\n\nMy name is {{my_name}}, a student at {{my_school}}. {{ai_line}}\n\n{{question}}\n\nWould you have 10 minutes for a short call, or could you point me to a good place to start?\n\nThank you for your time,\n{{my_name}}'},
- prompts:[],selected:{},emails:{},queue:[],history:[]};
+ prompts:[],drafts:[],activeDraft:'',selected:{},emails:{},queue:[],history:[]};
 function merge(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))merge(a[k],b[k]);else a[k]=b[k]}return a}
 const readLS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 let SEC=merge({apiKey:'',webKey:'',oaKey:'',gmail:'',appPass:''},readLS('openreach:secrets',{}));
@@ -430,7 +476,11 @@ const ROOT=()=>({...S,sec:SEC});
 function loadAcct(a){ACCT=a;localStorage.setItem('openreach:last',a);
  let d=readLS('openreach:data:'+a,null);
  if(!d&&a==='guest')d=readLS('openreach',null);           // migrate v1 data
- S=merge(structuredClone(DEF),d||{})}
+ S=merge(structuredClone(DEF),d||{});migrate()}
+function migrate(){
+ if(!S.drafts.length&&S.compose.useTpl&&S.compose.tpl){const L=S.compose.tpl.split('\n'),sub=/^subject:/i.test(L[0])?L[0].replace(/^subject:\s*/i,''):'';
+  const d={id:uid(),title:'My template',subject:sub,body:(sub?L.slice(1):L).join('\n').trim()};S.drafts.push(d);S.activeDraft=d.id;S.compose.mode='draft';S.compose.useTpl=false}
+ if(/^gemini-2\.5-flash$/.test(S.settings.model||''))S.settings.model='auto'}
 let syncTimer,dirty=false;
 function save(touch=true){if(touch)S.updatedAt=Date.now();
  try{localStorage.setItem('openreach:data:'+ACCT,JSON.stringify(S))}catch{toast('This browser is out of storage. Remove the PDF or download a backup.',true)}
@@ -447,11 +497,12 @@ function setBound(path,val){const p=path.split('.');let o=ROOT();for(let i=0;i<p
 function badges(){const set=(id,n)=>{const e=$(id);e.textContent=n||'';n?e.removeAttribute('data-z'):e.setAttribute('data-z','')};
  set('#nSel',Object.keys(S.selected).length);set('#nQ',S.queue.length);set('#nH',S.history.length);
  $('#keyBanner').hidden=!!SEC.apiKey;
- $('#aiMode').textContent=SEC.apiKey?`Writing with ${S.settings.model}`:'No AI key: using simple templates';
- $('#webKeyRow').hidden=S.settings.provider==='gemini';$('#baseRow').hidden=S.settings.provider==='gemini'}
+ $('#aiMode').textContent=SEC.apiKey?`AI: ${modelLabel()}`:'No AI key: using simple templates';
+ $('#webKeyRow').hidden=prov()==='gemini';$('#baseRow').hidden=prov()!=='custom';
+ const mi=$('#modelInfo');if(mi)mi.textContent=SEC.apiKey?`Writing with ${modelLabel()}.${S.settings.webModel?` Web search with ${S.settings.webModel}.`:''}`:'Add a key to turn on personal drafts and web search.'}
 
 function showTab(t){$$('.tab').forEach(s=>s.hidden=s.id!=='tab-'+t);$$('.rail .nav').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
- ({compose:renderCompose,queue:renderQueue,messages:()=>{renderHistory();if(Date.now()-lastCheck>18e4)checkReplies($('#chkBtn'),true)},profile:renderProfileExtras,find:renderResults}[t]||(()=>{}))();
+ ({compose:renderCompose,queue:renderQueue,messages:()=>{renderHistory();if(Date.now()-lastCheck>18e4)checkReplies($('#chkBtn'),true)},profile:renderProfileExtras,find:renderResults,drafts:renderDrafts,settings:renderModelSel}[t]||(()=>{}))();
  sessionStorage.setItem('openreach:tab',t);window.scrollTo(0,0)}
 $$('.rail .nav').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
@@ -486,6 +537,7 @@ function updateAcctUI(){const a=$('#acct');if(!a)return;
  else a.innerHTML=`<div class="who"><div class="avatar">?</div><div class="grow"><div class="email">No Gmail connected</div><div class="small muted">Data stays on this device</div></div></div>
    <div class="acct-more"><button class="btn primary" style="width:100%" onclick="showLogin()">Connect Gmail</button></div>`;
  $('#gmailInfo').textContent=connected()?`Connected as ${USER.email}. Your data is saved on this device and under a private "OpenReach" label in this Gmail.`:'Not connected. Your data is saved only in this browser.';
+ $('#gmailBtns').innerHTML=connected()?'<button class="btn" onclick="showLogin()">Connect a different Gmail</button><button class="btn quiet danger" onclick="signOut()">Disconnect</button>':'<button class="btn primary" onclick="showLogin()">Connect Gmail</button>';
  $('#dataWhere').textContent=connected()?`Saved on this device and under the "OpenReach" label in ${USER.email}.`:'Saved only in this browser. Connect Gmail to keep it in your account.'}
 
 /* sync: one message under the "OpenReach" Gmail label */
@@ -574,20 +626,20 @@ async function searchProfs(){const q=S.search.q.trim();if(!q)return toast('Type 
  catch(e){st.textContent='Search failed: '+e.message+'. Check your connection, or add your email under Settings → Paper search.'}
  finally{btn.disabled=false}}
 
-function geminiKey(){return S.settings.provider==='gemini'?SEC.apiKey:(SEC.webKey||'')}
-async function gemWeb(prompt){const key=geminiKey();if(!key)throw new Error('Web search needs a free Gemini key (Settings)');
- for(let a=0;a<4;a++){const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${WEB_MODEL}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],tools:[{google_search:{}}],generationConfig:{temperature:.2}})});
-  if(r.status===429||r.status===503){await sleep((a+1)*12000);continue}
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||'Web search error '+r.status);
-  const c=j.candidates?.[0];const text=(c?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
-  return{text,sources:(c?.groundingMetadata?.groundingChunks||[]).map(g=>g.web).filter(Boolean)}}
- throw new Error('Search limit hit, wait a minute and try again')}
+function geminiKey(){return prov()==='gemini'?SEC.apiKey:(SEC.webKey||'')}
+async function webSearch(prompt){const gk=geminiKey();let last=null;
+ if(gk){let models=S.settings.webModel?[S.settings.webModel]:[];
+  try{models.push(...rankGemini(await listGemini(gk)))}catch(e){if(isKeyErr(e))throw new Error('Your Gemini key was rejected: '+errText(e))}
+  for(const m of [...new Set(models)].slice(0,6)){try{const r=await callGemini(gk,m,prompt,{search:true});if(S.settings.webModel!==m){S.settings.webModel=m;save();badges()}return r}
+   catch(e){last=e;if(isKeyErr(e))throw e;if(!isModelErr(e)&&!/search|ground|tool/i.test(errText(e)))throw e}}}
+ if(prov()==='groq'&&SEC.apiKey){for(const m of ['groq/compound','groq/compound-mini','compound-beta']){try{return await callOpenAI(m,prompt,{json:false})}catch(e){last=e;if(isKeyErr(e))throw e}}}
+ if(!gk&&prov()!=='groq')throw new Error('Web search needs a free Gemini key (Settings → AI). Research papers search works without it');
+ throw new Error('Web search is not available for this key right now'+(last?` (${errText(last).slice(0,120)})`:'')+'. Use Research papers search instead')}
 async function webSearchProfs(){const q=S.search.q.trim();if(!q)return toast('Type a research topic first');
  const st=$('#searchStatus'),btn=$('#searchBtn');btn.disabled=true;RESULTS=[];SOURCES=[];renderResults();
  const where=S.search.insts.length?S.search.insts.map(i=>i.name).join('; '):(S.search.country?`universities in the country with code ${S.search.country.toUpperCase()}`:'strong research universities worldwide');
  st.textContent='Searching the web for faculty pages… (about 20 seconds)';
- try{const {text,sources}=await gemWeb(`Use Google Search to find real, currently active university faculty (professors, associate or assistant professors, lab heads) whose research matches: "${q}".
+ try{const {text,sources}=await webSearch(`Use Google Search to find real, currently active university faculty (professors, associate or assistant professors, lab heads) whose research matches: "${q}".
 Where: ${where}.
 The person writing to them: ${S.profile.level}${S.profile.interests?', interested in '+S.profile.interests:''}.
 Find up to 12 different people. Prefer official university faculty, department and lab pages.
@@ -635,7 +687,7 @@ function toggleSel(id,on){const p=RESULTS.find(x=>x.id===id);if(on&&p)S.selected
 function selectTop(n){visibleResults().slice(0,n).forEach(p=>S.selected[p.id]=slim(p));save();renderResults();toast(`Selected ${Math.min(n,visibleResults().length)} professors`)}
 function setEmail(id,v){S.emails[id]=v.trim();save()}
 
-async function lookupEmail(p){const {text}=await gemWeb(`Use Google Search to find the official work email address of this researcher.
+async function lookupEmail(p){const {text}=await webSearch(`Use Google Search to find the official work email address of this researcher.
 Name: ${p.name}
 Institution: ${p.current||p.inst||''}
 Research: ${(p.topics||[]).join(', ')||p.focus||''}
@@ -654,37 +706,101 @@ async function findAllEmails(b){const ps=Object.values(S.selected).filter(p=>!va
 
 /* ================= COMPOSE ================= */
 $('#typeSel').innerHTML=Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
-function tplVis(){$('#tplBox').hidden=!S.compose.useTpl}
+function tplVis(){const m=S.compose.mode==='draft'?'draft':'ai';$$('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.cm===m));$$('.aiOnly').forEach(e=>e.hidden=m!=='ai');
+ const info=$('#draftModeInfo');info.hidden=m!=='draft';const d=activeDraft();
+ info.innerHTML=d?`Using your draft <b>${esc(d.title)}</b>. ${SEC.apiKey?'The AI fills the placeholders for each professor and keeps your wording.':'Placeholders are filled from your profile (add an AI key for a personal touch).'} <a href="#" onclick="showTab('drafts');return false">Change draft</a>`
+  :`You don't have an active draft yet. <a href="#" onclick="showTab('drafts');return false">Write one in Email drafts</a>.`}
 function toggleManual(){$('#manual').hidden=!$('#manual').hidden}
 function addManual(){const n=$('#mName').value.trim();if(!n)return toast('Add a name first');const id='M'+uid(),inst=$('#mInst').value.trim(),focus=$('#mFocus').value.trim();
  S.selected[id]={id,name:n,inst,current:inst,focus,topics:focus?[focus]:[],papers:[]};S.emails[id]=$('#mEmail').value.trim();
  ['#mName','#mEmail','#mInst','#mFocus'].forEach(s=>$(s).value='');save();renderSelected()}
 function renderPromptSel(){$('#promptSel').innerHTML='<option value="">None (default style)</option>'+S.prompts.map(p=>`<option value="${p.id}" ${p.id===S.compose.promptId?'selected':''}>${esc(p.name)}</option>`).join('')}
-function renderCompose(){renderSelected();renderPromptSel();fillBinds()}
+function renderCompose(){renderSelected();renderPromptSel();fillBinds();tplVis()}
 function renderSelected(){const ps=Object.values(S.selected);
  $('#selList').innerHTML=ps.length?ps.map(p=>`<div class="sel-row"><div class="grow"><b>${esc(p.name)}</b> ${wasContacted(p.id,S.emails[p.id])?'<span class="tag warn">Already emailed</span>':''}<div class="meta">${esc(p.current||p.inst||'')}</div></div>
   <input type="email" placeholder="Email (needed to send)" value="${esc(S.emails[p.id]||'')}" oninput="setEmail('${p.id}',this.value)" aria-label="Email for ${esc(p.name)}">
   <button class="btn quiet danger" onclick="delete S.selected['${p.id}'];save();renderSelected()" aria-label="Remove">Remove</button></div>`).join('')
  :`<div class="empty"><h3>No one selected yet</h3><p>Pick professors in <a href="#" onclick="showTab('find');return false">Find professors</a>, or add someone manually.</p></div>`}
 
-/* AI */
-function baseUrl(){return S.settings.baseUrl||({groq:'https://api.groq.com/openai/v1',openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'}[S.settings.provider]||'')}
-const setGen=m=>$('#genStatus').textContent=m;
-async function ai(prompt){const s=S.settings;if(!SEC.apiKey)throw new Error('No AI key');
- for(let a=0;a<4;a++){let r;
-  if(s.provider==='gemini')r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent?key=${encodeURIComponent(SEC.apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:.8,responseMimeType:'application/json'}})});
-  else r=await fetch(baseUrl().replace(/\/$/,'')+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SEC.apiKey},
-    body:JSON.stringify({model:s.model,temperature:.8,messages:[{role:'user',content:prompt}],response_format:{type:'json_object'}})});
-  if(r.status===429||r.status===503){const w=(a+1)*15;setGen(`Free AI speed limit reached, waiting ${w} seconds…`);await sleep(w*1000);continue}
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||('AI error '+r.status));
-  const t=s.provider==='gemini'?(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text).join(''):j.choices?.[0]?.message?.content;
-  if(!t)throw new Error('The AI returned nothing, try again');return t}
+/* AI: any provider, auto-picks the best working model */
+const PROVIDERS={gemini:{base:'https://generativelanguage.googleapis.com/v1beta',key:'https://aistudio.google.com/apikey'},
+ groq:{base:'https://api.groq.com/openai/v1',key:'https://console.groq.com/keys'},openrouter:{base:'https://openrouter.ai/api/v1',key:'https://openrouter.ai/keys'},
+ cerebras:{base:'https://api.cerebras.ai/v1',key:'https://cloud.cerebras.ai/'},mistral:{base:'https://api.mistral.ai/v1',key:'https://console.mistral.ai/api-keys'},
+ deepseek:{base:'https://api.deepseek.com/v1',key:'https://platform.deepseek.com/api_keys'},openai:{base:'https://api.openai.com/v1',key:'https://platform.openai.com/api-keys'},custom:{base:'',key:''}};
+const prov=()=>PROVIDERS[S.settings.provider]?S.settings.provider:'gemini';
+function baseUrl(){return String(prov()==='custom'?S.settings.baseUrl:PROVIDERS[prov()].base).replace(/\/$/,'')}
+const setGen=m=>{const e=$('#genStatus');if(e)e.textContent=m};
+const errText=e=>String(e?.message||e||'');
+const isKeyErr=e=>/api key|api_key|invalid key|incorrect key|unauthori[sz]ed|\b401\b|\b403\b|permission denied|PERMISSION_DENIED|authentication/i.test(errText(e));
+const isModelErr=e=>!isKeyErr(e)&&/no longer available|not found|not supported|unsupported|deprecated|does not exist|decommission|retired|\b404\b|not available|model_not_found|invalid model|RESOURCE_EXHAUSTED|quota|limit: 0|per day|daily/i.test(errText(e));
+const apiErr=(j,s)=>{const e=j?.error;return new Error((typeof e==='string'?e:e?.message)||j?.message||j?.detail||('AI error '+s))};
+async function httpJSON(url,{headers={},body,method}={}){
+ const m=method||(body?'POST':'GET');
+ if(!url.startsWith(PROVIDERS.gemini.base)&&prov()!=='custom'&&location.protocol!=='file:'){   // relay through /api/ai to dodge CORS
+  try{const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:m,headers,body})});
+   if(r.status!==404){const j=await r.json().catch(()=>null);if(j&&'status' in j&&'body' in j)return{status:j.status,json:j.body};if(j)return{status:r.status,json:j}}}catch{}}
+ let r;try{r=await fetch(url,{method:m,headers:{...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined})}
+ catch{throw new Error('Could not reach the AI provider. Check your internet, or switch to Gemini')}
+ return{status:r.status,json:await r.json().catch(()=>({}))}}
+async function listGemini(key){const{status,json}=await httpJSON(`${PROVIDERS.gemini.base}/models?pageSize=1000&key=${encodeURIComponent(key)}`);if(status>=400)throw apiErr(json,status);
+ return(json.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,''))}
+async function listModels(){if(prov()==='gemini')return listGemini(SEC.apiKey);
+ const{status,json}=await httpJSON(baseUrl()+'/models',{headers:{Authorization:'Bearer '+SEC.apiKey}});if(status>=400)throw apiErr(json,status);
+ return(json.data||json.models||[]).map(m=>m.id||m.name).filter(Boolean)}
+function rankGemini(ids){return ids.map(id=>{const m=id.match(/^gemini-(\d+(?:\.\d+)?)-(flash-lite|flash|pro)(-preview[\w-]*|-latest|-\d{3})?$/);if(!m)return null;
+  return{id,s:parseFloat(m[1])*100+{flash:30,pro:22,'flash-lite':12}[m[2]]-(/preview/.test(m[3]||'')?6:0)}}).filter(Boolean).sort((a,b)=>b.s-a.s).map(x=>x.id)}
+const SKIP=/embed|whisper|tts|audio|speech|image|dall-?e|guard|moderation|rerank|transcri|realtime|playai|orpheus|search-preview|ocr|safeguard|compound|-base$|vision-preview/i;
+const FAMILY=[[/gpt-5(?!.*(nano|mini))/,62],[/gpt-oss-120b/,56],[/kimi-k2/,55],[/deepseek-(v3|chat|r1|reasoner)/,53],[/qwen-?3.*(235b|480b|max)/,51],[/llama-4-maverick/,49],[/mistral-large|magistral-medium/,48],[/gpt-4\.1(?!-nano)|gpt-4o(?!-mini)/,46],[/llama-3\.3-70b/,43],[/gemma-?3.*27b/,38],[/qwen/,34],[/llama/,30],[/mini|small|\b8b|nano|tiny|1b|3b/,-18]];
+function rankOpenAI(ids){const free=prov()==='openrouter'&&ids.some(i=>i.endsWith(':free'));
+ return ids.filter(id=>!SKIP.test(id)&&(!free||id.endsWith(':free'))).map(id=>{const l=id.toLowerCase();let s=0,neg=0;for(const[re,v]of FAMILY)if(re.test(l)){if(v<0)neg+=v;else s=Math.max(s,v)}s+=neg;const b=l.match(/(\d+)b\b/);if(b)s+=Math.min(20,Math.log2(+b[1])*2);return{id,s}}).sort((a,b)=>b.s-a.s).map(x=>x.id)}
+async function callGemini(key,model,prompt,{json=true,search=false}={}){
+ const gc={temperature:search?.2:.8};if(json&&!search)gc.responseMimeType='application/json';if(/^gemini-([3-9]|\d\d)/.test(model))gc.thinkingConfig={thinkingLevel:'low'};
+ const body={contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:gc};if(search)body.tools=[{google_search:{}}];
+ for(let a=0;a<3;a++){const{status,json:j}=await httpJSON(`${PROVIDERS.gemini.base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{body});
+  const raw=JSON.stringify(j);
+  if(status===400&&gc.thinkingConfig&&/thinking/i.test(raw)){delete gc.thinkingConfig;a--;continue}
+  if(status===429||status===503){if(/limit: 0|PerDay|per day/i.test(raw))throw apiErr(j,status);const w=(a+1)*12;setGen(`Free AI speed limit, waiting ${w} seconds…`);await sleep(w*1000);continue}
+  if(status>=400)throw apiErr(j,status);
+  const c=j.candidates?.[0],text=(c?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
+  if(!text)throw new Error(c?.finishReason?`The AI stopped early (${c.finishReason}). Try again`:'The AI returned nothing. Try again');
+  return{text,sources:(c?.groundingMetadata?.groundingChunks||[]).map(g=>g.web).filter(Boolean)}}
  throw new Error('AI is rate limited. Wait a minute and try again')}
-function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0)throw new Error('AI answer was not in the expected format');return JSON.parse(t.slice(a,b+1))}
-function providerPreset(){const m={gemini:['gemini-2.5-flash',''],groq:['llama-3.3-70b-versatile','https://api.groq.com/openai/v1'],openrouter:['meta-llama/llama-3.3-70b-instruct:free','https://openrouter.ai/api/v1'],openai:['gpt-4o-mini','https://api.openai.com/v1']}[S.settings.provider];
- setBound('settings.model',m[0]);setBound('settings.baseUrl',m[1]);badges()}
-async function testAI(b){b.disabled=true;try{parseJSON(await ai('Return JSON {"ok":"yes"}'));toast('AI is working')}catch(e){toast(e.message,true)}b.disabled=false}
+async function callOpenAI(model,prompt,{json=true}={}){
+ const body={model,temperature:.8,messages:[{role:'user',content:prompt}]};if(json)body.response_format={type:'json_object'};
+ for(let a=0;a<3;a++){const{status,json:j}=await httpJSON(baseUrl()+'/chat/completions',{headers:{Authorization:'Bearer '+SEC.apiKey},body});
+  const raw=JSON.stringify(j);
+  if(status===400&&body.response_format&&/response_format|json_object|json mode/i.test(raw)){delete body.response_format;a--;continue}
+  if(status===429||status===503){if(/per day|daily|limit: 0/i.test(raw))throw apiErr(j,status);const w=(a+1)*12;setGen(`Free AI speed limit, waiting ${w} seconds…`);await sleep(w*1000);continue}
+  if(status>=400)throw apiErr(j,status);
+  const t=j.choices?.[0]?.message?.content;if(!t)throw new Error('The AI returned nothing. Try again');return{text:t,sources:[]}}
+ throw new Error('AI is rate limited. Wait a minute and try again')}
+const callAny=(m,prompt,o)=>prov()==='gemini'?callGemini(SEC.apiKey,m,prompt,o):callOpenAI(m,prompt,o);
+let FINDING=null;
+async function findBestModel(exclude=[]){if(!SEC.apiKey)throw new Error('Add an AI key first');if(FINDING)return FINDING;
+ FINDING=(async()=>{setGen('Finding the best AI model for your key…');
+  const ranked=(prov()==='gemini'?rankGemini(await listModels()):rankOpenAI(await listModels())).filter(m=>!exclude.includes(m));
+  if(!ranked.length)throw new Error('This key has no text models available');
+  S.settings.models=ranked.slice(0,30);let last;
+  for(const m of ranked.slice(0,7)){try{await callAny(m,'Reply with JSON {"ok":true}');S.settings.resolved={provider:prov(),model:m,at:Date.now()};save();badges();renderModelSel();setGen('');return m}
+   catch(e){last=e;if(isKeyErr(e))throw e}}
+  throw last||new Error('No model answered')})();
+ try{return await FINDING}finally{FINDING=null;setGen('')}}
+async function activeModel(){if(S.settings.model&&S.settings.model!=='auto')return S.settings.model;
+ const r=S.settings.resolved;if(r?.provider===prov()&&r.model)return r.model;return findBestModel()}
+async function ai(prompt){if(!SEC.apiKey)throw new Error('No AI key');const m=await activeModel();
+ try{return(await callAny(m,prompt)).text}
+ catch(e){if(!isModelErr(e))throw e;toast(`${m} isn't available on your key. Switching to the best working model…`);
+  const n=await findBestModel([m]);if(S.settings.model!=='auto'){S.settings.model='auto';save()}renderModelSel();return(await callAny(n,prompt)).text}}
+function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0)throw new Error('AI answer was not in the expected format. Try again');return JSON.parse(t.slice(a,b+1))}
+function modelLabel(){if(S.settings.model&&S.settings.model!=='auto')return S.settings.model;const r=S.settings.resolved;return r?.provider===prov()&&r.model?`${r.model} (auto)`:'best available model (auto)'}
+function renderModelSel(){const sel=$('#modelSel');if(!sel)return;const cur=S.settings.model||'auto',list=[...(S.settings.models||[])];if(cur!=='auto'&&!list.includes(cur))list.unshift(cur);
+ const r=S.settings.resolved;sel.innerHTML=`<option value="auto">Auto: best available${r?.provider===prov()&&r.model?` (now ${esc(r.model)})`:''}</option>`+list.map(m=>`<option ${m===cur?'selected':''}>${esc(m)}</option>`).join('');
+ if(cur==='auto')sel.value='auto';const kl=$('#keyLink');if(kl){kl.href=PROVIDERS[prov()].key||'#';kl.hidden=!PROVIDERS[prov()].key}badges()}
+function setModel(v){S.settings.model=v;save();renderModelSel()}
+function providerChanged(){Object.assign(S.settings,{model:'auto',resolved:{},models:[],webModel:''});save();renderModelSel()}
+function keyChanged(){Object.assign(S.settings,{resolved:{},webModel:''});save();badges()}
+async function findBestBtn(b){b.disabled=true;b.textContent='Testing models…';try{const m=await findBestModel();toast('Best model for your key: '+m)}catch(e){toast(e.message,true)}b.disabled=false;b.textContent='Find the best model'}
+async function testAI(b){b.disabled=true;try{parseJSON(await ai('Reply with JSON {"ok":"yes"}'));toast('AI works with '+modelLabel())}catch(e){toast(e.message,true)}b.disabled=false}
 
 function studentBlock(){const p=S.profile;return `STUDENT
 Name: ${p.name||'[Your Name]'}
@@ -738,20 +854,97 @@ function fallbackDraft(p){const pr=S.profile,c=S.compose,w=(p.papers||[])[0],top
  const T=topic||'your research',subj={research:topic?`Student interested in your ${topic} research`:'Student interested in joining your lab',summer:`Summer research inquiry: ${T}`,question:`Quick question about ${topic?'your work on '+topic:'your research'}`,
   mentorship:`Seeking guidance on a ${topic||'research'} project`,feedback:`Feedback request on my ${topic||'research'} project`,grad:`Prospective graduate student${topic?': '+topic:''}`,remote:'Remote research assistant inquiry',custom:`About ${topic?'your work on '+topic:'your research'}`}[c.type];
  return{subject:subj,body:`Dear Professor ${lastName(p.name)},\n\n${me} ${hook}\n\n${c.question?c.question+'\n\n':''}${ask}${cv}\n\nThank you for your time.\n\nBest regards,\n${pr.name||'[Your Name]'}${pr.email?'\n'+pr.email:''}`}}
-async function tplDraft(p){const c=S.compose,pr=S.profile,w=(p.papers||[])[0];
- const map={prof_last:lastName(p.name),prof_name:p.name,university:p.current||p.inst||'',paper:w?.title||p.focus||'',topic:(p.topics||[])[0]||p.focus||'your research',my_name:pr.name||'[Your Name]',my_school:pr.school,question:c.question,ai_line:''};
- if(c.tpl.includes('{{ai_line}}')){if(SEC.apiKey)map.ai_line=parseJSON(await ai(`${studentBlock()}\n\n${profBlock(p)}\n${userPromptBlock()}\nWrite 1-2 natural sentences in ${c.lang} (max 45 words) from the student about what in this professor's work caught their interest and how it links to their own background. Only use given facts. No clichés, no em dashes.\nReturn ONLY JSON {"line":"..."}`)).line;
-  else map.ai_line=w?`I came across "${w.title}", and it connects with my interest in ${pr.interests||map.topic}.`:`Your work on ${map.topic} connects with my interest in ${pr.interests||'this area'}.`}
- const f=c.tpl.replace(/\{\{(\w+)\}\}/g,(m,k)=>map[k]??m),lines=f.split('\n');
- return /^subject:/i.test(lines[0])?{subject:lines[0].replace(/^subject:\s*/i,''),body:lines.slice(1).join('\n').trim()}:{subject:`About your work on ${map.topic}`,body:f.trim()}}
-async function draftFor(p){if(S.compose.useTpl&&S.compose.tpl.trim())return tplDraft(p);if(!SEC.apiKey)return fallbackDraft(p);
+/* ===== Email drafts with placeholders ===== */
+const PH=[['professor_last_name',"Professor's last name"],['professor_name',"Professor's full name"],['university','Their university'],['research_topic','Their main research topic'],['paper_name','A recent paper of theirs'],
+ ['student_context','1-2 sentences the AI writes linking you to their work'],['student_name','Your name'],['grade','Your grade or year (Profile)'],['location','Your city and country (Profile)'],['school','Your school (Profile)'],
+ ['experience','Your experience and projects (Profile)'],['courses','Your relevant courses (Profile)'],['interests','Your research interests (Profile)'],['question','The question you type in Write'],['my_email','Your email']];
+const PH_ALIAS={prof_last:'professor_last_name',prof_name:'professor_name',my_name:'student_name',my_school:'school',topic:'research_topic',paper:'paper_name',ai_line:'student_context'};
+const EXAMPLES=[
+ {title:'Join a lab (unpaid help)',desc:'The classic first email. Offers concrete help and asks for a short call.',subject:'Student interested in helping with your {{research_topic}} research',
+  body:'Dear Professor {{professor_last_name}},\n\nMy name is {{student_name}}, a {{grade}} at {{school}} in {{location}}. {{student_context}}\n\nI recently read your paper "{{paper_name}}", and I would love to contribute to your lab\'s work, even in an unpaid role. I can help with literature reviews, cleaning and analyzing data, or any small task that is useful. I have experience with {{experience}}, and my resume is attached.\n\nIf you are open to it, could we schedule a 10 to 15 minute call? If you don\'t have the time, is there someone in your lab I could reach out to instead?\n\nEither way, thank you for your time.\n\nSincerely,\n{{student_name}}'},
+ {title:'Summer research',desc:'Asks for a few weeks of research over the summer, remote or in person.',subject:'Summer research inquiry: {{research_topic}}',
+  body:'Dear Professor {{professor_last_name}},\n\nI\'m {{student_name}}, a {{grade}} at {{school}}. {{student_context}}\n\nI am looking for a research experience this summer and would be grateful for the chance to join your group, even for a few weeks. I have taken {{courses}} and worked on {{experience}}. I am happy to work remotely and can commit about 15 to 20 hours a week.\n\nAre you taking any students this summer? My resume is attached in case it helps.\n\nThank you very much,\n{{student_name}}'},
+ {title:'Ask one specific question',desc:'No favor asked, just a real question. Professors answer these most often.',subject:'A question about "{{paper_name}}"',
+  body:'Dear Professor {{professor_last_name}},\n\nMy name is {{student_name}}, a {{grade}} at {{school}} interested in {{interests}}. I have been reading your work on {{research_topic}}, and there is one thing I could not figure out on my own:\n\n{{question}}\n\nEven a short answer, or a pointer to a paper I should read, would help me a lot.\n\nThank you for your time,\n{{student_name}}'},
+ {title:'Feedback on my project',desc:'Shares your own project and asks for a few lines of advice.',subject:'Student project on {{research_topic}}: would value your view',
+  body:'Dear Professor {{professor_last_name}},\n\nI\'m {{student_name}}, a {{grade}} at {{school}}. {{student_context}}\n\nOver the past months I have been working on a project of my own: {{experience}}. Because your research on {{research_topic}} is so close to it, I would really value your view on whether my approach makes sense, or what I should read next.\n\nMy resume with a short project summary is attached. Any feedback, even a few lines, would mean a lot.\n\nBest regards,\n{{student_name}}'},
+ {title:'Grad school (MS/PhD)',desc:'For college students checking fit before applying.',subject:'Prospective graduate student in {{research_topic}}',
+  body:'Dear Professor {{professor_last_name}},\n\nI\'m {{student_name}}, currently a {{grade}} at {{school}}, and I plan to apply to graduate programs this coming cycle. {{student_context}}\n\nMy background includes {{courses}}, and I have worked on {{experience}}. Your paper "{{paper_name}}" is a big part of why I want to keep going in this area.\n\nAre you planning to take new students into your group, and would my background be a reasonable fit? My CV is attached.\n\nThank you for considering my message,\n{{student_name}}'}];
+const activeDraft=()=>S.drafts.find(d=>d.id===S.activeDraft);
+function phValues(p){const pr=S.profile,w=(p.papers||[])[0];
+ const topic=String((p.topics||[])[0]||p.focus||'').replace(/^([A-Z])(?=[a-z])/,c=>c.toLowerCase());
+ return{professor_last_name:lastName(p.name),professor_name:p.name,university:p.current||p.inst||'',research_topic:topic,paper_name:w?.title||'',student_context:'',
+  student_name:pr.name,grade:pr.grade,location:pr.location,school:pr.school,experience:pr.experience,courses:pr.courses,interests:pr.interests,question:S.compose.question,my_email:pr.email}}
+function localFill(t,v){return String(t||'').replace(/\{\{\s*(\w+)\s*\}\}/g,(m,k)=>{k=PH_ALIAS[k]||k;const x=v[k];return x?String(x).trim():`[${k.replace(/_/g,' ')}]`}).replace(/\b([Aa]) (?=[aeiouAEIOU]|11|18\b|8)/g,'$1n ')}
+async function draftFromTemplate(p,d){const v=phValues(p);
+ if(SEC.apiKey){const r=parseJSON(await ai(`You fill in an email template that a student wrote, for one specific professor.
+
+TEMPLATE SUBJECT: ${d.subject||'(none given: write a specific subject under 9 words)'}
+TEMPLATE BODY:
+${d.body}
+
+KNOWN VALUES (empty means unknown):
+${Object.entries(v).map(([k,x])=>`{{${k}}} = ${x||'(empty)'}`).join('\n')}
+
+${studentBlock()}
+
+${profBlock(p)}
+${userPromptBlock()}
+RULES
+- Replace every {{placeholder}} (also old names like {{prof_last}}, {{my_name}}, {{ai_line}}).
+- {{student_context}}: write 1-2 sincere sentences (max 45 words) connecting this student's real background to this professor's research.
+- Use the known value when given. If a value is empty, infer it ONLY from the student's profile/resume or the professor info. If it truly can't be known, rewrite that phrase smoothly so nothing is invented and no placeholder or bracket remains.
+- Keep the student's wording, order, paragraphs and tone exactly. Only fix grammar where a filled value meets the text (a/an, plurals, capitals).
+- {{paper_name}} is the exact paper title. {{research_topic}} is a short natural phrase like "soft robotics", lowercase unless it's a proper noun.
+- Don't add sentences other than {{student_context}}. No em dashes.
+Return ONLY JSON {"subject":"...","body":"..."} with \\n for line breaks.`));
+  if(r.subject&&r.body)return{subject:r.subject,body:String(r.body).replace(/\\n/g,'\n')}}
+ const mine=S.profile.interests||v.research_topic||'this area';
+ v.student_context=v.paper_name&&!/paper_name|\{\{\s*paper\s*\}\}/.test(d.body)?`I came across your paper "${v.paper_name}", and it connects closely with my interest in ${mine}.`:(v.research_topic?`Your work on ${v.research_topic} connects closely with my interest in ${mine}.`:'');
+ return{subject:d.subject?localFill(d.subject,v):`About your work on ${v.research_topic||'your research'}`,body:localFill(d.body,v)}}
+async function draftFor(p){if(S.compose.mode==='draft'){const d=activeDraft();if(!d)throw new Error('Choose an active draft in Email drafts first');return draftFromTemplate(p,d)}
+ if(!SEC.apiKey)return fallbackDraft(p);
  const d=parseJSON(await ai(buildPrompt(p)));if(!d.subject||!d.body)throw new Error('AI returned an incomplete draft');return{subject:d.subject,body:String(d.body).replace(/\\n/g,'\n')}}
-async function generateAll(){const ps=Object.values(S.selected);if(!ps.length)return toast('Select professors first');
+
+let PH_TARGET='#edBody',EDIT=null;
+function renderDrafts(){
+ $('#exList').innerHTML=EXAMPLES.map((e,i)=>`<div class="ex"><h3>${esc(e.title)}</h3><p class="muted small">${esc(e.desc)}</p>
+  <details><summary>Read the example</summary><pre class="mail">${esc('Subject: '+e.subject+'\n\n'+e.body)}</pre></details>
+  <button class="btn" onclick="useExample(${i})">Use this example</button></div>`).join('');
+ $('#draftList').innerHTML=S.drafts.length?S.drafts.map(d=>{const on=d.id===S.activeDraft;return `<div class="draft-row ${on?'on':''}"><div class="grow"><b>${esc(d.title||'Untitled draft')}</b> ${on?'<span class="tag ok">Active</span>':''}
+   <div class="meta">${esc(d.subject||'The AI writes a subject')}</div></div>
+   ${on?'':`<button class="btn" onclick="activateDraft('${d.id}')">Use</button>`}<button class="btn" onclick="editDraft('${d.id}')">Edit</button><button class="btn quiet danger" onclick="deleteDraft('${d.id}')">Delete</button></div>`}).join('')
+  :'<div class="muted small">No drafts yet. Start from an example above, or write a blank one.</div>';
+ $('#phChips').innerHTML=PH.map(([k,t])=>`<button class="chip pick" title="${esc(t)}" onclick="insertPh('${k}')">{{${k}}}</button>`).join('')}
+function openEditor(d){EDIT=d.id||null;$('#draftEditor').hidden=false;$('#edTitle').value=d.title||'';$('#edSubject').value=d.subject||'';$('#edBody').value=d.body||'';$('#edPreview').innerHTML='';checkPh();
+ $('#draftEditor').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}
+function useExample(i){const e=EXAMPLES[i];openEditor({title:e.title,subject:e.subject,body:e.body})}
+function newDraft(){openEditor({title:'My outreach email',subject:'',body:'Dear Professor {{professor_last_name}},\n\n'})}
+function editDraft(id){openEditor(S.drafts.find(d=>d.id===id))}
+function closeEditor(){$('#draftEditor').hidden=true;EDIT=null}
+function insertPh(k){const t=$(PH_TARGET)||$('#edBody'),s=t.selectionStart??t.value.length,e=t.selectionEnd??s,ins=`{{${k}}}`;t.value=t.value.slice(0,s)+ins+t.value.slice(e);t.focus();t.selectionStart=t.selectionEnd=s+ins.length;checkPh()}
+function checkPh(){const known=new Set([...PH.map(x=>x[0]),...Object.keys(PH_ALIAS)]),all=($('#edSubject').value+' '+$('#edBody').value).match(/\{\{\s*\w+\s*\}\}/g)||[];
+ const bad=[...new Set(all.map(x=>x.replace(/[{}\s]/g,'')).filter(k=>!known.has(k)))];
+ const pr=S.profile,empty=[['grade',pr.grade],['location',pr.location],['school',pr.school],['experience',pr.experience],['courses',pr.courses],['interests',pr.interests]].filter(([k,v])=>!v&&all.some(x=>x.includes(k))).map(x=>x[0]);
+ $('#edWarn').textContent=[bad.length?`Unknown placeholder${bad.length>1?'s':''}: ${bad.map(b=>'{{'+b+'}}').join(', ')}. Use the chips above.`:'',empty.length?`Your profile is missing: ${empty.join(', ')}. Fill them in "You & your CV" so these placeholders work.`:''].filter(Boolean).join(' ')}
+function saveDraft(activate){const body=$('#edBody').value.trim();if(!body)return toast('Write the email body first',true);
+ let d=EDIT&&S.drafts.find(x=>x.id===EDIT);if(!d){d={id:uid()};S.drafts.push(d);EDIT=d.id}
+ Object.assign(d,{title:$('#edTitle').value.trim()||'My draft',subject:$('#edSubject').value.trim(),body});
+ if(activate){S.activeDraft=d.id;S.compose.mode='draft'}save();renderDrafts();toast(activate?'Saved. This draft is used when you generate':'Draft saved')}
+function activateDraft(id){S.activeDraft=id;S.compose.mode='draft';save();renderDrafts();toast('This draft is now active')}
+function deleteDraft(id){if(!confirm('Delete this draft?'))return;S.drafts=S.drafts.filter(d=>d.id!==id);if(S.activeDraft===id)S.activeDraft='';if(EDIT===id)closeEditor();save();renderDrafts()}
+async function previewDraft(b){const d={subject:$('#edSubject').value,body:$('#edBody').value};if(!d.body.trim())return toast('Write the email body first',true);
+ const p=Object.values(S.selected)[0]||RESULTS[0]||{id:'demo',name:'Daniela Rus',current:'Massachusetts Institute of Technology',topics:['soft robotics'],papers:[{title:'Learning to grasp with soft robotic hands',year:2025}]};
+ b.disabled=true;b.textContent='Writing preview…';
+ try{const r=await draftFromTemplate(p,d);$('#edPreview').innerHTML=`<div class="muted small">Preview for ${esc(p.name)}${SEC.apiKey?'':', without AI (add a key in Settings for a personal {{student_context}})'}</div><pre class="mail">${esc('Subject: '+r.subject+'\n\n'+r.body)}</pre>`}
+ catch(e){toast(e.message,true)}b.disabled=false;b.textContent='Preview for a professor'}
+function setCMode(m){S.compose.mode=m;save();tplVis()}
+async function generateAll(){const ps=Object.values(S.selected);if(!ps.length)return toast('Select professors first');if(S.compose.mode==='draft'&&!activeDraft())return toast('Choose an active draft in Email drafts first',true);
  const btn=$('#genBtn');btn.disabled=true;let ok=0;
  for(const[i,p]of ps.entries()){setGen(`Writing ${i+1} of ${ps.length}: ${p.name}…`);
-  try{const d=await draftFor(p);S.queue.unshift({id:uid(),profId:p.id,prof:p,to:S.emails[p.id]||'',subject:d.subject,body:d.body,kind:S.compose.type,ready:false,created:Date.now()});ok++;save()}
+  try{const d=await draftFor(p);S.queue.unshift({id:uid(),profId:p.id,prof:p,to:S.emails[p.id]||'',subject:d.subject,body:d.body,kind:S.compose.mode==='draft'?'draft':S.compose.type,ready:false,created:Date.now()});ok++;save()}
   catch(e){toast(p.name+': '+e.message,true)}
-  if(SEC.apiKey&&i<ps.length-1)await sleep(S.settings.provider==='gemini'?4500:2000)}
+  if(SEC.apiKey&&i<ps.length-1)await sleep(prov()==='gemini'?4500:2000)}
  btn.disabled=false;setGen(ok?`${ok} draft${ok>1?'s':''} ready to review`:'');if(ok){S.selected={};save();setTimeout(()=>showTab('queue'),600)}}
 
 /* ================= QUEUE & SENDING ================= */
@@ -770,7 +963,7 @@ function renderQueue(){renderQBar();const el=$('#queueList');
  el.innerHTML=S.queue.map(q=>{const dup=!isThread(q)&&wasContacted(q.profId,q.to);
   return `<article class="sheet">
   <div class="q-head"><div class="grow"><h3>${esc(q.prof.name)}</h3><div class="meta">${esc(q.prof.current||q.prof.inst||'')}</div></div>
-   <span class="tag">${isThread(q)?(q.kind==='reply'?'Reply':'Follow-up'):esc(TYPE_LABEL[q.kind]||'')}</span>
+   <span class="tag">${isThread(q)?(q.kind==='reply'?'Reply':'Follow-up'):q.kind==='draft'?'From my draft':esc(TYPE_LABEL[q.kind]||'')}</span>
    ${dup?'<span class="tag warn">You already emailed this professor</span>':''}</div>
   <label>To<input type="email" value="${esc(q.to)}" placeholder="professor@university.edu" oninput="qset('${q.id}','to',this.value.trim())"></label>
   <label>Subject<input value="${esc(q.subject)}" oninput="qset('${q.id}','subject',this.value)"></label>
@@ -787,6 +980,7 @@ function renderQueue(){renderQBar();const el=$('#queueList');
    <button class="btn quiet danger end" onclick="delQ('${q.id}')">Delete</button></div></article>`}).join('')}
 function preSend(q,batch){if(!validEmail(q.to)){if(!batch)toast(`Add a valid email for ${q.prof.name} first`,true);return false}
  if(!q.subject.trim()||!q.body.trim()){if(!batch)toast('Subject and message cannot be empty',true);return false}
+ const hole=(q.subject+'\n'+q.body).match(/\{\{\s*\w+\s*\}\}|\[(?:[A-Za-z]+ ?){1,3}\]/);if(hole){if(!batch)toast(`Fill in ${hole[0]} for ${q.prof.name} before sending`,true);return false}
  if(!isThread(q)&&wasContacted(q.profId,q.to)){if(batch)return false;if(!confirm(`You already emailed ${q.prof.name}. Send again anyway?`))return false}return true}
 
 function attachmentFor(q){const c=S.profile.cv;return S.profile.attachCv&&c&&!isThread(q)?{name:c.name,type:c.type,b64:c.b64}:null}
