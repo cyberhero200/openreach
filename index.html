@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenReach: write to professors whose research you care about</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --page:#EDF0F5;--sheet:#FFFFFF;--ink:#0F1B33;--mut:#5B6478;--line:#D8DEE9;
+  --ox:#1F3FA6;--ox-2:#16307F;--ox-soft:#E7ECFA;--stamp:#C8372D;--sage:#2F7D5B;--sage-soft:#E3F2EA;--amber:#9A5B12;--amber-soft:#FBF0DE;
+  --serif:"Newsreader",Georgia,serif;--sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:15px/1.55 var(--sans);background:var(--page);color:var(--ink)}
+a{color:var(--ox)}
+:focus-visible{outline:2px solid var(--ox);outline-offset:2px}
+h1,h2,h3{font-family:var(--serif);font-weight:500;letter-spacing:-.01em;margin:0}
+h2{font-size:34px;line-height:1.15}
+h3{font-size:19px;line-height:1.3}
+p{margin:0 0 12px}
+.lede{color:var(--mut);max-width:62ch;margin:6px 0 24px;font-size:16px}
+.muted{color:var(--mut)}.small{font-size:13px}
+.row{display:flex;align-items:center;gap:10px}.wrap{flex-wrap:wrap}.grow{flex:1;min-width:0}.end{margin-left:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 14px}
+label{display:block;font-size:13.5px;font-weight:600;margin-bottom:12px}
+label .hint{font-weight:400;color:var(--mut)}
+input,select,textarea{width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+textarea{resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ox);box-shadow:0 0 0 3px var(--ox-soft)}
+input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--ox);flex:none}
+.check{display:flex;gap:9px;align-items:center;font-weight:500}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:10px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{border-color:#B9C2D3;background:#FAFBFD}
+.btn.primary{background:var(--ox);border-color:var(--ox);color:#fff}.btn.primary:hover{background:var(--ox-2)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--mut)}.btn.quiet:hover{color:var(--ink);background:#F2F4F8}
+.btn.danger{color:var(--stamp)}.btn.go{color:var(--sage)}
+.btn.lg{padding:13px 22px;font-size:15px;border-radius:12px}
+.btn:disabled{opacity:.55;cursor:progress}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}
+.sheet>h3{margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{background:var(--ox-soft);color:var(--ox-2);padding:4px 11px;border-radius:999px;font-size:13px;font-weight:600}
+.chip.x{cursor:pointer;border:0;font:inherit;font-size:13px;font-weight:600}.chip.x:after{content:"  ✕";opacity:.6}
+.chip.pick{cursor:pointer;background:#fff;border:1px solid var(--line);color:var(--ink);font:inherit;font-size:13px;font-weight:500}
+.chip.pick:hover{border-color:var(--ox);color:var(--ox)}
+.tag{display:inline-block;font-family:var(--sans);font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--ox-soft);color:var(--ox-2);vertical-align:middle}
+.tag.warn{background:var(--amber-soft);color:var(--amber)}.tag.ok{background:var(--sage-soft);color:var(--sage)}.tag.red{background:#FBE7E5;color:var(--stamp)}
+.note{padding:12px 14px;border-radius:12px;background:var(--ox-soft);color:var(--ox-2);font-weight:500;margin:12px 0}
+.note.warn{background:var(--amber-soft);color:var(--amber)}
+.note:empty{display:none}
+.empty{text-align:center;color:var(--mut);padding:44px 12px}
+.empty h3{color:var(--ink);margin-bottom:6px}
+
+/* login */
+#login{min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:48px;max-width:1120px;margin:auto;padding:40px 28px}
+#login h1{font-size:clamp(40px,6vw,66px);line-height:1.02;letter-spacing:-.025em;margin:18px 0 18px}
+#login .brand{font-family:var(--serif);font-size:22px;font-weight:600}
+#login ul{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px;max-width:52ch}
+#login li{padding-left:28px;position:relative;color:#2B3550}
+#login li:before{content:"";position:absolute;left:0;top:7px;width:14px;height:10px;border:2px solid var(--ox);border-radius:2px}
+.letter{background:#fff;border:1px solid var(--line);border-radius:6px;padding:26px 26px 22px;position:relative;box-shadow:0 30px 60px -30px rgba(15,27,51,.35);transform:rotate(-1.2deg)}
+.letter .ln{height:9px;border-radius:5px;background:#E8ECF3;margin:10px 0}
+.letter .to{font-family:var(--serif);font-size:17px}
+.letter .stamp{position:absolute;right:20px;top:-22px;transform:rotate(4deg)}
+.signin{margin-top:28px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+.gbtn{width:100%;padding:12px;font-size:15px;border-radius:12px;gap:12px}
+.gbtn svg{width:20px;height:20px}
+
+/* stamp: the one loud element */
+.stamp{--s:66px;width:var(--s);height:calc(var(--s)*1.16);flex:none;position:relative;filter:drop-shadow(0 2px 3px rgba(15,27,51,.18));
+  background:#fff radial-gradient(circle,var(--page) 2.6px,transparent 3.1px) -4px -4px/8px 8px}
+.stamp i{position:absolute;inset:6px;background:var(--ox);color:#fff;display:grid;place-content:center;text-align:center;font-style:normal}
+.stamp b{font-family:var(--serif);font-size:calc(var(--s)*.34);font-weight:600;line-height:1}
+.stamp small{font-size:10px;opacity:.85;margin-top:3px}
+.stamp.lo i{background:#4D5C86}
+.sheet .stamp{background-image:radial-gradient(circle,#fff 2.6px,transparent 3.1px);background-color:#D7DDE9}
+.postmark{width:74px;height:74px;border-radius:50%;border:2px solid var(--stamp);box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 5.5px var(--stamp);color:var(--stamp);display:grid;place-content:center;text-align:center;transform:rotate(-12deg);flex:none;opacity:.9}
+.postmark span{font-size:11px;font-weight:700}.postmark b{font-family:var(--serif);font-size:15px;line-height:1.1}
+
+/* shell */
+#app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.rail{background:#fff;border-right:1px solid var(--line);padding:22px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.rail .brand{font-family:var(--serif);font-size:23px;font-weight:600;padding:0 10px 18px}
+.rail button.nav{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;padding:10px;border-radius:10px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer;text-align:left}
+.rail button.nav:hover{background:#F3F5F9;color:var(--ink)}
+.rail button.nav.on{background:var(--ox-soft);color:var(--ox-2)}
+.rail .num{width:24px;height:24px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-content:center;font-size:12px;flex:none}
+.rail .n{margin-left:auto;font-size:12px;min-width:22px;padding:1px 7px;border-radius:999px;background:var(--ox);color:#fff;text-align:center}
+.rail .n:empty,.rail .n[data-z]{display:none}
+.acct{margin-top:auto;border-top:1px solid var(--line);padding-top:14px}
+.acct .who{display:flex;gap:10px;align-items:center;padding:0 6px 10px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--ox-soft);color:var(--ox-2);display:grid;place-content:center;font-weight:700;overflow:hidden;flex:none}
+.avatar img{width:100%;height:100%}
+.acct .email{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#B9C2D3;margin-right:6px}
+.dot.on{background:var(--sage)}
+main{padding:34px clamp(16px,4vw,48px) 90px;max-width:1040px;width:100%}
+
+/* professor cards */
+.prof{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:start}
+.prof.sel{border-color:var(--ox);box-shadow:0 0 0 3px var(--ox-soft)}
+.prof .pick{padding-top:4px}
+.prof h3 a{color:inherit;text-decoration:none}
+.papers{margin:8px 0 12px;padding-left:18px;font-size:14px}.papers li{margin:2px 0}.papers a{color:var(--ink)}
+.meta{font-size:13.5px;color:var(--mut)}
+.mailrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mailrow input{max-width:300px;margin:0}
+.seg{display:inline-flex;background:#E3E8F1;border-radius:12px;padding:4px;gap:4px;margin-bottom:14px}
+.seg button{border:0;background:none;padding:9px 16px;border-radius:9px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(15,27,51,.12)}
+.drop{position:relative}
+.drop ul{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--line);border-radius:12px;list-style:none;margin:4px 0 0;padding:5px;z-index:20;max-height:280px;overflow:auto;box-shadow:0 16px 40px -12px rgba(15,27,51,.25);font-weight:500}
+.drop li{padding:9px 11px;border-radius:8px;cursor:pointer}.drop li:hover{background:var(--ox-soft)}
+.drop ul:empty{display:none}
+.sel-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
+.sel-row:first-child{border-top:0}
+.sel-row input{max-width:290px;margin:0}
+.file{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px;border:1px dashed #B9C2D3;border-radius:12px;background:#FAFBFD}
+.prompt{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.prompt.on{border-color:var(--ox)}
+.prompt input{margin:0;font-weight:600}
+.toolbar{position:sticky;top:0;z-index:5;background:var(--page);padding:10px 0;margin-bottom:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.q-head{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+.att{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--sage);background:var(--sage-soft);padding:3px 10px;border-radius:999px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{font-family:var(--serif);font-size:32px;font-weight:500;display:block;line-height:1.1}
+.hist{display:grid;grid-template-columns:1fr auto;gap:14px}
+details summary{cursor:pointer;font-weight:600;color:var(--ox);margin:8px 0}
+pre.mail{white-space:pre-wrap;font:inherit;font-size:14.5px;background:#F7F9FC;border:1px solid var(--line);border-radius:12px;padding:14px;margin:6px 0 10px}
+.who-l{font-size:12.5px;font-weight:700;color:var(--mut);margin-top:8px}
+.progress{height:6px;background:#DCE2EC;border-radius:6px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--ox);width:0;transition:width .4s}
+.sources{font-size:13px;margin-top:4px}.sources a{margin-right:10px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-weight:600;opacity:0;transition:.22s;pointer-events:none;max-width:92vw;z-index:99}
+#toast.show{opacity:1;transform:translate(-50%,0)}#toast.bad{background:var(--stamp)}
+code{background:#EEF1F7;padding:1px 5px;border-radius:5px;font-size:13px}
+ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
+@media (max-width:860px){
+  #login{grid-template-columns:1fr;gap:28px;padding:28px 18px}
+  #app{grid-template-columns:1fr}
+  .rail{position:sticky;top:0;z-index:30;height:auto;flex-direction:row;overflow-x:auto;padding:8px 10px;gap:4px;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
+  .rail .brand{display:none}.rail button.nav{width:auto;white-space:nowrap;padding:8px 10px}
+  .acct{margin:0;border:0;padding:0;display:flex;align-items:center}.acct .who .email,.acct .acct-more{display:none}.acct .who{padding:0 4px}
+  .prof{grid-template-columns:auto 1fr}.prof .stamp{grid-row:1;grid-column:2;justify-self:end;--s:54px}
+  h2{font-size:28px}.mailrow input,.sel-row input{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" hidden>
+  <div>
+    <div class="brand">OpenReach</div>
+    <h1>Write to the professors whose work you actually want to join.</h1>
+    <p class="lede" style="margin:0">Find researchers at any university, get an honest personal email for each one, and send it from your own Gmail with your CV attached. Free, and nothing goes out until you press Send.</p>
+    <ul>
+      <li>Search 250M+ papers or the open web for professors in your field</li>
+      <li>Your resume and saved prompts shape every draft</li>
+      <li>Replies, follow-ups and history in one place, synced to your account</li>
+    </ul>
+  </div>
+  <div>
+    <div class="letter" aria-hidden="true">
+      <div class="stamp"><i><b>96%</b><small>fit</small></i></div>
+      <div class="to">Dear Professor Okafor,</div>
+      <div class="ln" style="width:92%"></div><div class="ln" style="width:84%"></div><div class="ln" style="width:88%"></div>
+      <div class="ln" style="width:40%;margin-top:18px"></div>
+    </div>
+    <div class="signin">
+      <button class="btn gbtn" id="gSignIn" onclick="signIn()">
+        <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-5 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+        Sign in with Google
+      </button>
+      <p class="small muted" style="margin:12px 0 0">Signing in lets OpenReach send emails you approve from your Gmail and save your data to a private app folder in your Google Drive. It cannot read your inbox.</p>
+      <div id="noClient" class="note warn small" hidden>Google sign-in is not set up on this site yet. The site owner needs to add a Google Client ID (see Settings). You can still use everything without an account.</div>
+      <button class="btn quiet" style="margin-top:10px;width:100%" onclick="useGuest()">Continue without an account</button>
+      <p class="small muted" style="margin:14px 0 0;text-align:center"><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="app" hidden>
+  <aside class="rail">
+    <div class="brand">OpenReach</div>
+    <button class="nav" data-tab="profile"><span class="num">1</span>You &amp; your CV</button>
+    <button class="nav" data-tab="find"><span class="num">2</span>Find professors</button>
+    <button class="nav" data-tab="compose"><span class="num">3</span>Write <span class="n" id="nSel"></span></button>
+    <button class="nav" data-tab="queue"><span class="num">4</span>Review &amp; send <span class="n" id="nQ"></span></button>
+    <button class="nav" data-tab="messages"><span class="num">5</span>Messages <span class="n" id="nH"></span></button>
+    <button class="nav" data-tab="settings"><span class="num">⚙</span>Settings</button>
+    <div class="acct" id="acct"></div>
+  </aside>
+
+  <main>
+  <!-- PROFILE -->
+  <section class="tab" id="tab-profile">
+    <h2>You and your CV</h2>
+    <p class="lede">This is saved to your account and used in every email. The more specific your interests, the better the drafts.</p>
+    <div id="keyBanner" class="note warn" hidden>No AI key yet, so drafts use simple templates. Add a free Gemini key in <a href="#" onclick="showTab('settings');return false">Settings</a> to get personal drafts and web search.</div>
+    <div class="sheet">
+      <div class="grid">
+        <label>Full name<input data-bind="profile.name" autocomplete="name" placeholder="Aziz Karimov"></label>
+        <label>Email shown in signature<input data-bind="profile.email" type="email" placeholder="you@gmail.com"></label>
+        <label>Level<select data-bind="profile.level"><option>High school student</option><option>Undergraduate student</option><option>Master's student</option><option>Recent graduate</option><option>Independent student researcher</option></select></label>
+        <label>School or university<input data-bind="profile.school" placeholder="Presidential School in Tashkent"></label>
+        <label>Major or main subjects<input data-bind="profile.major" placeholder="Computer science, math"></label>
+        <label>Links<input data-bind="profile.links" placeholder="github.com/you"></label>
+      </div>
+      <label>Research interests<textarea rows="2" data-bind="profile.interests" placeholder="computer vision for medical imaging, low-cost robotics"></textarea></label>
+    </div>
+
+    <div class="sheet">
+      <h3>Resume</h3>
+      <div class="file" id="cvBox"></div>
+      <label class="check" style="margin:12px 0"><input type="checkbox" data-bind="profile.attachCv"> Attach this PDF to every first email I send</label>
+      <label>Resume text the AI reads <span class="hint">(filled automatically from your PDF, edit freely)</span>
+        <textarea rows="7" data-bind="profile.resume" placeholder="Projects, olympiads, courses, skills…"></textarea></label>
+    </div>
+
+    <div class="sheet">
+      <div class="row wrap"><h3 class="grow" style="margin:0">Saved prompts</h3>
+        <label class="btn" style="margin:0">Upload .txt<input type="file" accept=".txt,.md" hidden onchange="uploadPrompt(this)"></label>
+        <button class="btn" onclick="addPrompt()">New prompt</button></div>
+      <p class="muted small" style="margin:8px 0 14px">Your own instructions for how emails should sound or what they must include. Pick one in Write and the AI follows it for every professor.</p>
+      <div id="promptList"></div>
+    </div>
+    <div class="row"><button class="btn primary lg end" onclick="showTab('find')">Find professors</button></div>
+  </section>
+
+  <!-- FIND -->
+  <section class="tab" id="tab-find" hidden>
+    <h2>Find professors</h2>
+    <p class="lede">Search published research to rank people by fit, or search the web to find faculty pages and emails.</p>
+    <div class="seg" role="tablist">
+      <button data-mode="papers" onclick="setMode('papers')">Research papers</button>
+      <button data-mode="web" onclick="setMode('web')">Web search</button>
+    </div>
+    <div class="sheet">
+      <label>Research topic<input data-bind="search.q" id="q" placeholder="reinforcement learning for robot grasping" onkeydown="if(event.key==='Enter')runSearch()"></label>
+      <div class="chips" id="topicChips"></div>
+      <div class="grid">
+        <label class="drop">Universities <span class="hint">(empty means all)</span>
+          <input id="instQ" placeholder="MIT, KAIST, ETH Zurich…" autocomplete="off"><ul id="instRes"></ul></label>
+        <label>Country code <span class="hint">(optional)</span><input data-bind="search.country" list="cc" placeholder="US, GB, KR, DE" maxlength="2"></label>
+        <label class="papersOnly">Papers since<input type="number" data-bind="search.year" min="1990" max="2026"></label>
+      </div>
+      <datalist id="cc"><option value="US">USA</option><option value="GB">UK</option><option value="CA">Canada</option><option value="DE">Germany</option><option value="KR">South Korea</option><option value="JP">Japan</option><option value="SG">Singapore</option><option value="CN">China</option><option value="AU">Australia</option><option value="NL">Netherlands</option><option value="CH">Switzerland</option><option value="TR">Turkey</option><option value="UZ">Uzbekistan</option><option value="KZ">Kazakhstan</option><option value="IT">Italy</option><option value="FR">France</option><option value="HK">Hong Kong</option></datalist>
+      <div class="chips" id="instChips"></div>
+      <div class="row wrap">
+        <label class="check papersOnly" style="margin:0"><input type="checkbox" data-bind="search.hideJunior" data-onchange="renderResults"> Hide people with fewer than
+          <input type="number" data-bind="search.minWorks" data-onchange="renderResults" style="width:64px;margin:0;padding:6px 8px"> papers</label>
+        <span class="muted small webOnly">Uses Google Search through your free Gemini key (about 500 searches a day).</span>
+        <button class="btn primary lg end" id="searchBtn" onclick="runSearch()">Search</button>
+      </div>
+    </div>
+    <div class="note" id="searchStatus"></div>
+    <div class="row wrap" id="resTools" hidden style="margin-bottom:12px">
+      <span class="muted" id="resCount"></span>
+      <button class="btn end" onclick="selectTop(10)">Select top 10</button>
+      <button class="btn primary" onclick="showTab('compose')">Write to selected</button>
+    </div>
+    <div id="results"></div>
+  </section>
+
+  <!-- COMPOSE -->
+  <section class="tab" id="tab-compose" hidden>
+    <h2>Write</h2>
+    <p class="lede">Choose what you are asking for, add your own question, and get one personal draft per professor.</p>
+    <div class="sheet">
+      <div class="row wrap"><h3 class="grow" style="margin:0">Who you're writing to</h3>
+        <button class="btn" id="findAllBtn" onclick="findAllEmails(this)">Find missing emails</button>
+        <button class="btn" onclick="toggleManual()">Add someone manually</button></div>
+      <div id="manual" hidden style="margin-top:14px">
+        <div class="grid">
+          <label>Name<input id="mName" placeholder="Jane Doe"></label>
+          <label>Email<input id="mEmail" placeholder="jdoe@mit.edu"></label>
+          <label>University<input id="mInst" placeholder="MIT"></label>
+        </div>
+        <label>Their research, or a paper title<input id="mFocus" placeholder="Soft robotics for minimally invasive surgery"></label>
+        <button class="btn primary" onclick="addManual()">Add professor</button>
+      </div>
+      <div id="selList" style="margin-top:8px"></div>
+    </div>
+    <div class="sheet">
+      <div class="grid">
+        <label>What you're asking for<select data-bind="compose.type" id="typeSel"></select></label>
+        <label>Saved prompt<select id="promptSel" onchange="S.compose.promptId=this.value;save()"></select></label>
+        <label>Tone<select data-bind="compose.tone"><option>Respectful &amp; warm</option><option>Formal</option><option>Confident &amp; direct</option><option>Humble &amp; curious</option></select></label>
+        <label>Length<select data-bind="compose.length"><option value="100">Short (100 words)</option><option value="150">Medium (150 words)</option><option value="220">Longer (220 words)</option></select></label>
+        <label>Language<select data-bind="compose.lang"><option>English</option><option>Uzbek</option><option>Russian</option><option>German</option><option>Korean</option><option>Japanese</option><option>Turkish</option><option>French</option><option>Spanish</option><option>Chinese</option></select></label>
+      </div>
+      <label>Your question or message <span class="hint">(included in every email, adapted to each professor)</span>
+        <textarea rows="3" data-bind="compose.question" placeholder="I'm building a low-cost prosthetic hand with EMG sensors. Which signal-processing approach would you suggest for a beginner?"></textarea></label>
+      <label>One-off instructions <span class="hint">(optional)</span><input data-bind="compose.notes" placeholder="Mention I'm free June to August and can work remotely"></label>
+      <label class="check"><input type="checkbox" data-bind="compose.useTpl" data-onchange="tplVis"> Use my fixed template and only swap professor details</label>
+      <div id="tplBox" hidden style="margin-top:12px">
+        <label>Template <span class="hint">First line is the subject. Placeholders: <code>{{prof_last}}</code> <code>{{prof_name}}</code> <code>{{university}}</code> <code>{{paper}}</code> <code>{{topic}}</code> <code>{{my_name}}</code> <code>{{my_school}}</code> <code>{{question}}</code> <code>{{ai_line}}</code></span>
+          <textarea rows="10" data-bind="compose.tpl"></textarea></label>
+      </div>
+      <div class="row wrap" style="margin-top:6px">
+        <button class="btn primary lg" id="genBtn" onclick="generateAll()">Write drafts</button>
+        <span class="muted small" id="aiMode"></span>
+      </div>
+      <div class="note" id="genStatus"></div>
+    </div>
+  </section>
+
+  <!-- QUEUE -->
+  <section class="tab" id="tab-queue" hidden>
+    <h2>Review &amp; send</h2>
+    <p class="lede">Read every draft before it goes out. Tick the ones you're happy with, then send one by one or all at once from your Gmail.</p>
+    <div class="toolbar" id="qBar"></div>
+    <div id="queueList"></div>
+  </section>
+
+  <!-- MESSAGES -->
+  <section class="tab" id="tab-messages" hidden>
+    <h2>Messages</h2>
+    <p class="lede">Everything you sent. When a professor replies, paste their reply here and OpenReach drafts your answer in the same Gmail thread.</p>
+    <div class="stats" id="stats"></div>
+    <div class="row wrap" style="margin-bottom:14px">
+      <select id="hFilter" style="max-width:190px;margin:0" onchange="renderHistory()"><option value="">All statuses</option></select>
+      <input id="hSearch" placeholder="Search name, university or subject" style="max-width:300px;margin:0" oninput="renderHistory()">
+      <button class="btn end" onclick="exportJSON()">Download backup</button>
+      <label class="btn" style="margin:0">Restore backup<input type="file" accept=".json" hidden onchange="importJSON(this.files[0])"></label>
+      <button class="btn" onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div id="histList"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tab" id="tab-settings" hidden>
+    <h2>Settings</h2>
+    <p class="lede">API keys stay in this browser only and are never synced. Every person using your site brings their own free key, so it costs you nothing to host.</p>
+    <div class="sheet">
+      <h3>AI for writing</h3>
+      <div class="grid">
+        <label>Provider<select data-bind="settings.provider" data-onchange="providerPreset">
+          <option value="gemini">Google Gemini (free)</option><option value="groq">Groq (free)</option><option value="openrouter">OpenRouter (free models)</option><option value="openai">Other OpenAI-compatible API</option></select></label>
+        <label>Model<input data-bind="settings.model"></label>
+        <label>API key<input type="password" data-bind="sec.apiKey" placeholder="Paste your key" autocomplete="off"></label>
+      </div>
+      <label id="baseRow">Base URL<input data-bind="settings.baseUrl"></label>
+      <label id="webKeyRow">Gemini key for web search <span class="hint">(only needed if your writing provider isn't Gemini)</span><input type="password" data-bind="sec.webKey" autocomplete="off"></label>
+      <div class="row wrap">
+        <button class="btn primary" onclick="testAI(this)">Test AI</button>
+        <a class="btn" target="_blank" rel="noopener" href="https://aistudio.google.com/apikey">Get a free Gemini key</a>
+        <a class="btn quiet" target="_blank" rel="noopener" href="https://console.groq.com/keys">Groq key</a>
+      </div>
+    </div>
+    <div class="sheet">
+      <h3>Sending</h3>
+      <label>Seconds between emails when sending all <span class="hint">(spacing them out keeps you out of spam filters)</span><input type="number" min="5" max="300" data-bind="settings.gapSec"></label>
+    </div>
+    <div class="sheet">
+      <h3>Google sign-in <span class="tag">for the site owner</span></h3>
+      <p class="muted small">Needed once so people can sign in and send through Gmail. Best: paste it into <code>GOOGLE_CLIENT_ID</code> at the top of the code so it works for everyone. This field only sets it for this browser.</p>
+      <label>OAuth Client ID<input data-bind="sec.clientId" placeholder="1234-abc.apps.googleusercontent.com" data-onchange="clientChanged"></label>
+      <details><summary>How to get a Client ID (free, about 5 minutes)</summary>
+        <ol class="steps small">
+          <li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project.</li>
+          <li>APIs &amp; Services → Library: enable <b>Gmail API</b> and <b>Google Drive API</b>.</li>
+          <li>Google Auth Platform → Branding: app name, your email. Audience: External. Add yourself (and friends, up to 100) as test users.</li>
+          <li>Data access → add scopes <code>gmail.send</code> and <code>drive.appdata</code>.</li>
+          <li>Clients → Create client → Web application. Authorized JavaScript origins: your site URL, e.g. <code>https://your-site.netlify.app</code>.</li>
+          <li>Copy the Client ID here, or into the code.</li>
+        </ol>
+      </details>
+    </div>
+    <div class="sheet">
+      <h3>Paper search</h3>
+      <div class="grid">
+        <label>Your email <span class="hint">(gets faster OpenAlex responses)</span><input data-bind="settings.oaMail" placeholder="you@gmail.com"></label>
+        <label>OpenAlex API key <span class="hint">(optional)</span><input data-bind="sec.oaKey" autocomplete="off"></label>
+      </div>
+    </div>
+    <div class="sheet">
+      <h3>Your data</h3>
+      <p class="muted small" id="dataWhere"></p>
+      <button class="btn danger" onclick="resetAll()">Delete all data on this device</button>
+      <p class="small muted" style="margin:12px 0 0"><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms</a></p>
+    </div>
+  </section>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const GOOGLE_CLIENT_ID = ''; // Site owner: paste your Google OAuth Client ID here
+const SCOPES='openid email profile https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.appdata';
+const OA='https://api.openalex.org', WEB_MODEL='gemini-2.5-flash';
+
+/* ================= HELPERS ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const short=id=>String(id||'').split('/').pop();
+const lastName=n=>{const p=String(n||'').replace(/^(prof\.?|professor|dr\.?)\s+/i,'').trim().split(/\s+/);return p[p.length-1]||n};
+const words=t=>String(t||'').trim().split(/\s+/).filter(Boolean).length;
+const days=t=>Math.max(0,Math.floor((Date.now()-t)/864e5));
+const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e||'');
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='show'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>t.className='',4200)}
+
+const TYPES={research:'Ask about research opportunities or joining their lab (beginner tasks like literature review, data work, coding are fine)',summer:'Ask about a summer research internship in their lab',question:"Ask a specific question about their research (the student's question is the main point, no job request)",mentorship:'Ask for mentorship or guidance on a student project or thesis',feedback:"Share the student's own project and ask for short feedback",grad:'Ask about graduate (MS/PhD) openings and fit with their group',remote:'Ask about a remote or part-time research assistant role',custom:"Custom: follow the student's question and instructions exactly"};
+const TYPE_LABEL={research:'A research or lab position',summer:'A summer internship',question:'An answer to my question',mentorship:'Mentorship on my project',feedback:'Feedback on my project',grad:'A grad school (MS/PhD) spot',remote:'Remote research assistant work',custom:'Something else (describe below)'};
+const TOPICS=['AI and robotics','Machine learning','Biomedical engineering','Climate science','Aerospace','Neuroscience','Quantum computing','Renewable energy','Economics','Genetics','Materials science','Cybersecurity'];
+const STATUSES=['Sent','Follow-up sent','Replied','Call or interview','Accepted','Declined','No reply'];
+
+/* ================= STATE ================= */
+const DEF={updatedAt:0,
+ profile:{name:'',email:'',level:'High school student',school:'',major:'',interests:'',resume:'',links:'',cv:null,attachCv:true},
+ settings:{provider:'gemini',model:'gemini-2.5-flash',baseUrl:'',oaMail:'',gapSec:'25'},
+ search:{mode:'papers',q:'',insts:[],country:'',year:'2019',hideJunior:true,minWorks:'20'},
+ compose:{type:'research',question:'',notes:'',tone:'Respectful & warm',length:'150',lang:'English',useTpl:false,promptId:'',
+  tpl:'Subject: Question about your work on {{topic}}\n\nDear Professor {{prof_last}},\n\nMy name is {{my_name}}, a student at {{my_school}}. {{ai_line}}\n\n{{question}}\n\nWould you have 10 minutes for a short call, or could you point me to a good place to start?\n\nThank you for your time,\n{{my_name}}'},
+ prompts:[],selected:{},emails:{},queue:[],history:[]};
+function merge(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))merge(a[k],b[k]);else a[k]=b[k]}return a}
+const readLS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+let SEC=merge({apiKey:'',webKey:'',oaKey:'',clientId:''},readLS('openreach:secrets',{}));
+let USER=readLS('openreach:user',null), ACCT=localStorage.getItem('openreach:last')||'', S=structuredClone(DEF), RESULTS=[], SOURCES=[];
+const clientId=()=>GOOGLE_CLIENT_ID||SEC.clientId;
+const ROOT=()=>({...S,sec:SEC});
+
+function loadAcct(a){ACCT=a;localStorage.setItem('openreach:last',a);
+ let d=readLS('openreach:data:'+a,null);
+ if(!d&&a==='guest')d=readLS('openreach',null);           // migrate v1 data
+ S=merge(structuredClone(DEF),d||{})}
+let syncTimer,dirty=false;
+function save(touch=true){if(touch)S.updatedAt=Date.now();
+ try{localStorage.setItem('openreach:data:'+ACCT,JSON.stringify(S))}catch{toast('This browser is out of storage. Remove the PDF or download a backup.',true)}
+ badges();if(touch){dirty=true;scheduleSync()}}
+function saveSec(){localStorage.setItem('openreach:secrets',JSON.stringify(SEC));badges()}
+
+/* bindings: listeners read the current S at event time */
+function bindAll(){$$('[data-bind]').forEach(el=>{const p=el.dataset.bind.split('.');
+ el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':'input',()=>{let o=ROOT();for(let i=0;i<p.length-1;i++)o=o[p[i]];
+  o[p[p.length-1]]=el.type==='checkbox'?el.checked:el.value;p[0]==='sec'?saveSec():save();if(el.dataset.onchange)window[el.dataset.onchange]?.()})})}
+function fillBinds(){$$('[data-bind]').forEach(el=>{const v=el.dataset.bind.split('.').reduce((o,k)=>o?.[k],ROOT());if(el.type==='checkbox')el.checked=!!v;else el.value=v??''})}
+function setBound(path,val){const p=path.split('.');let o=ROOT();for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=val;const el=$(`[data-bind="${path}"]`);if(el)el.value=val;p[0]==='sec'?saveSec():save()}
+
+function badges(){const set=(id,n)=>{const e=$(id);e.textContent=n||'';n?e.removeAttribute('data-z'):e.setAttribute('data-z','')};
+ set('#nSel',Object.keys(S.selected).length);set('#nQ',S.queue.length);set('#nH',S.history.length);
+ $('#keyBanner').hidden=!!SEC.apiKey;
+ $('#aiMode').textContent=SEC.apiKey?`Writing with ${S.settings.model}`:'No AI key: using simple templates';
+ $('#webKeyRow').hidden=S.settings.provider==='gemini';$('#baseRow').hidden=S.settings.provider==='gemini'}
+
+function showTab(t){$$('.tab').forEach(s=>s.hidden=s.id!=='tab-'+t);$$('.rail .nav').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+ ({compose:renderCompose,queue:renderQueue,messages:renderHistory,profile:renderProfileExtras,find:renderResults}[t]||(()=>{}))();
+ sessionStorage.setItem('openreach:tab',t);window.scrollTo(0,0)}
+$$('.rail .nav').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+/* ================= GOOGLE ACCOUNT ================= */
+let tokenClient=null,TOKEN=null,TOKEN_EXP=0;
+async function ensureGis(){for(let i=0;i<40&&!window.google?.accounts?.oauth2;i++)await sleep(200);
+ if(!window.google?.accounts?.oauth2)throw new Error('Google sign-in script did not load (check ad blockers)');
+ if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({client_id:clientId(),scope:SCOPES,callback:()=>{}});}
+function tokenValid(){return TOKEN&&Date.now()<TOKEN_EXP-60000}
+async function getToken(prompt=''){if(tokenValid())return TOKEN;if(!clientId())throw new Error('Google sign-in is not set up (Settings → Google sign-in)');await ensureGis();
+ return new Promise((res,rej)=>{tokenClient.callback=r=>{if(r.error)return rej(new Error(r.error_description||r.error));
+   if(!google.accounts.oauth2.hasGrantedAllScopes(r,'https://www.googleapis.com/auth/gmail.send'))return rej(new Error('Please allow "Send email on your behalf" so OpenReach can send'));
+   TOKEN=r.access_token;TOKEN_EXP=Date.now()+(+r.expires_in||3600)*1000;updateAcctUI();res(TOKEN);if(dirty)scheduleSync()};
+  tokenClient.error_callback=e=>rej(new Error(e?.type==='popup_closed'?'Sign-in window was closed':'Sign-in popup was blocked, allow popups for this site'));
+  tokenClient.requestAccessToken({prompt,login_hint:USER?.email||''})})}
+async function gfetch(url,opt={},retry=true){const t=await getToken();const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}});
+ if(r.status===401&&retry){TOKEN=null;return gfetch(url,opt,false)}
+ if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error?.message||('Google error '+r.status))}return r}
+
+async function signIn(){if(!clientId()){$('#noClient').hidden=false;return}
+ const b=$('#gSignIn');b.disabled=true;
+ try{TOKEN=null;const t=await getToken('consent');
+  const u=await(await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+t}})).json();
+  USER={email:u.email,name:u.name,picture:u.picture};localStorage.setItem('openreach:user',JSON.stringify(USER));
+  const hadGuest=readLS('openreach:data:guest',null)||readLS('openreach',null);
+  loadAcct(u.email);
+  let remote=null;try{remote=await drivePull()}catch(e){console.warn(e)}
+  if(remote&&(remote.updatedAt||0)>(S.updatedAt||0))S=merge(structuredClone(DEF),remote);
+  else if(!S.updatedAt&&!remote&&hadGuest)S=merge(structuredClone(DEF),hadGuest);   // carry guest work into new account
+  if(!S.profile.name)S.profile.name=u.name||'';if(!S.profile.email)S.profile.email=u.email||'';
+  save();enterApp();toast('Signed in as '+u.email)}
+ catch(e){toast(e.message,true)}finally{b.disabled=false}}
+function useGuest(){USER=null;localStorage.removeItem('openreach:user');loadAcct('guest');enterApp()}
+function signOut(){if(TOKEN&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(TOKEN,()=>{});TOKEN=null;USER=null;
+ localStorage.removeItem('openreach:user');localStorage.removeItem('openreach:last');ACCT='';showLogin()}
+function clientChanged(){tokenClient=null}
+function updateAcctUI(){const a=$('#acct');if(!a)return;
+ if(USER&&ACCT===USER.email){a.innerHTML=`<div class="who"><div class="avatar">${USER.picture?`<img src="${esc(USER.picture)}" alt="" referrerpolicy="no-referrer">`:esc((USER.name||USER.email)[0])}</div>
+   <div class="grow"><div class="email">${esc(USER.email)}</div><div class="small muted"><span class="dot ${tokenValid()?'on':''}"></span><span id="syncTxt">${tokenValid()?'Gmail connected':'Connects when you send'}</span></div></div></div>
+   <div class="acct-more row wrap" style="gap:4px"><button class="btn quiet" onclick="syncNow(this)">Sync now</button><button class="btn quiet" onclick="signOut()">Sign out</button></div>`}
+ else a.innerHTML=`<div class="who"><div class="avatar">?</div><div class="grow"><div class="email">Not signed in</div><div class="small muted">Data stays on this device</div></div></div>
+   <div class="acct-more"><button class="btn primary" style="width:100%" onclick="signIn()">Sign in with Google</button></div>`;
+ $('#dataWhere').textContent=USER?`Saved on this device and in a private OpenReach folder in ${USER.email}'s Google Drive.`:'Saved only in this browser. Sign in to keep it in your Google account.'}
+
+/* Drive appData sync */
+let DRIVE_ID=null;
+async function driveFind(){const r=await gfetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,modifiedTime)&q='+encodeURIComponent("name='openreach.json'"));return(await r.json()).files?.[0]||null}
+async function drivePull(){const f=await driveFind();if(!f)return null;DRIVE_ID=f.id;return(await gfetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json()}
+async function drivePush(){const body=JSON.stringify(S);if(!DRIVE_ID)DRIVE_ID=(await driveFind())?.id||null;
+ if(DRIVE_ID)await gfetch(`https://www.googleapis.com/upload/drive/v3/files/${DRIVE_ID}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body});
+ else{const b='or'+uid();const multi=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:'openreach.json',parents:['appDataFolder']})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+  DRIVE_ID=(await(await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:multi})).json()).id}
+ dirty=false}
+function scheduleSync(){if(!USER||ACCT!==USER.email||!tokenValid())return;clearTimeout(syncTimer);
+ syncTimer=setTimeout(async()=>{try{await drivePush();const s=$('#syncTxt');if(s)s.textContent='Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}catch(e){console.warn('sync',e)}},3000)}
+async function syncNow(b){b.disabled=true;try{await getToken();const remote=await drivePull();
+  if(remote&&(remote.updatedAt||0)>(S.updatedAt||0)){S=merge(structuredClone(DEF),remote);save(false);enterApp();toast('Loaded newer data from your account')}
+  else{await drivePush();toast('Synced to your Google account')}updateAcctUI()}catch(e){toast(e.message,true)}b.disabled=false}
+
+/* ================= BOOT ================= */
+function showLogin(){$('#app').hidden=true;$('#login').hidden=false;$('#noClient').hidden=!!clientId()}
+function enterApp(){$('#login').hidden=true;$('#app').hidden=false;fillBinds();renderInst();tplVis();badges();updateAcctUI();setMode(S.search.mode,true);
+ showTab(sessionStorage.getItem('openreach:tab')||'profile')}
+
+/* ================= PROFILE: CV + PROMPTS ================= */
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+function renderProfileExtras(){renderCv();renderPrompts()}
+function renderCv(){const c=S.profile.cv;$('#cvBox').innerHTML=c?`<span class="att">PDF</span><b class="grow">${esc(c.name)}</b><span class="muted small">${Math.round(c.size/1024)} KB</span>
+  <label class="btn" style="margin:0">Replace<input type="file" accept=".pdf" hidden onchange="uploadCv(this.files[0])"></label><button class="btn quiet danger" onclick="S.profile.cv=null;save();renderCv()">Remove</button>`
+ :`<span class="grow muted">Upload your resume as a PDF. It's saved to your account, read by the AI, and attached to your emails.</span><label class="btn primary" style="margin:0">Upload PDF<input type="file" accept=".pdf,.txt,.md" hidden onchange="uploadCv(this.files[0])"></label>`}
+function toB64(buf){let s='';const b=new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
+async function uploadCv(f){if(!f)return;try{const buf=await f.arrayBuffer();let text='';
+ if(/\.pdf$/i.test(f.name)){if(f.size>2.5e6)return toast('Keep the PDF under 2.5 MB so it fits in an email and your account',true);
+  S.profile.cv={name:f.name.replace(/[^\w.\- ]/g,'_'),type:'application/pdf',size:f.size,b64:toB64(buf)};
+  const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;for(let i=1;i<=pdf.numPages;i++){const c=await(await pdf.getPage(i)).getTextContent();text+=c.items.map(x=>x.str).join(' ')+'\n'}}
+ else text=new TextDecoder().decode(buf);
+ text=text.replace(/[ \t]+/g,' ').replace(/\n\s*\n+/g,'\n').trim();if(text)setBound('profile.resume',text);save();renderCv();toast('Resume saved'+(text?` (${words(text)} words read)`:''))}
+ catch(e){toast('Could not read that file: '+e.message,true)}}
+const activePrompt=()=>S.prompts.find(p=>p.id===S.compose.promptId)?.text?.trim()||'';
+function renderPrompts(){$('#promptList').innerHTML=S.prompts.length?S.prompts.map(p=>`<div class="prompt ${p.id===S.compose.promptId?'on':''}">
+  <div class="row"><input value="${esc(p.name)}" aria-label="Prompt name" oninput="pset('${p.id}','name',this.value)">
+   ${p.id===S.compose.promptId?'<span class="tag ok">In use</span>':`<button class="btn quiet" onclick="usePrompt('${p.id}')">Use</button>`}
+   <button class="btn quiet danger" onclick="delPrompt('${p.id}')">Delete</button></div>
+  <textarea rows="4" oninput="pset('${p.id}','text',this.value)" placeholder="e.g. Always mention my robotics olympiad project. Keep it under 120 words. Ask for a 15-minute call, never for a paid position.">${esc(p.text)}</textarea></div>`).join('')
+ :'<div class="muted small" style="padding:6px 0">No saved prompts yet. Create one or upload a .txt file.</div>'}
+function pset(id,k,v){const p=S.prompts.find(x=>x.id===id);if(p){p[k]=v;save();if(k==='name')renderPromptSel()}}
+function addPrompt(name='My prompt',text=''){const p={id:uid(),name,text};S.prompts.push(p);S.compose.promptId=p.id;save();renderPrompts();renderPromptSel()}
+function usePrompt(id){S.compose.promptId=id;save();renderPrompts();toast('This prompt is now used for every draft')}
+function delPrompt(id){if(!confirm('Delete this prompt?'))return;S.prompts=S.prompts.filter(p=>p.id!==id);if(S.compose.promptId===id)S.compose.promptId='';save();renderPrompts()}
+async function uploadPrompt(inp){const f=inp.files[0];if(!f)return;addPrompt(f.name.replace(/\.\w+$/,''),(await f.text()).trim());inp.value='';toast('Prompt saved')}
+
+/* ================= FIND ================= */
+async function oa(path,params={}){const go=async p=>{const u=new URL(OA+path);for(const[k,v]of Object.entries(p))if(v!==''&&v!=null)u.searchParams.set(k,v);
+  if(S.settings.oaMail)u.searchParams.set('mailto',S.settings.oaMail);if(SEC.oaKey)u.searchParams.set('api_key',SEC.oaKey);
+  const r=await fetch(u);if(!r.ok)throw new Error('OpenAlex error '+r.status);return r.json()};
+ try{return await go(params)}catch(e){if(params.select){const{select,...rest}=params;return go(rest)}throw e}}
+const abs=inv=>{if(!inv)return'';const a=[];for(const[w,ps]of Object.entries(inv))for(const p of ps)a[p]=w;return a.filter(Boolean).slice(0,90).join(' ')};
+function setMode(m,quiet){S.search.mode=m;if(!quiet)save();$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+ $$('.papersOnly').forEach(e=>e.hidden=m!=='papers');$$('.webOnly').forEach(e=>e.hidden=m!=='web')}
+let instTimer;$('#instQ').oninput=e=>{clearTimeout(instTimer);const q=e.target.value.trim();if(q.length<2){$('#instRes').innerHTML='';return}
+ instTimer=setTimeout(async()=>{try{const d=await oa('/institutions',{search:q,'per-page':8,select:'id,display_name,country_code,type'});
+  $('#instRes').innerHTML=d.results.map(i=>`<li data-id="${short(i.id)}" data-n="${esc(i.display_name)}">${esc(i.display_name)} <span class="muted small">${esc(i.country_code||'')}</span></li>`).join('')}catch(err){toast(err.message,true)}},280)};
+$('#instRes').onclick=e=>{const li=e.target.closest('li');if(!li)return;if(!S.search.insts.some(i=>i.id===li.dataset.id))S.search.insts.push({id:li.dataset.id,name:li.dataset.n});
+ save();$('#instRes').innerHTML='';$('#instQ').value='';renderInst()};
+document.addEventListener('click',e=>{if(!e.target.closest('.drop'))$('#instRes').innerHTML=''});
+function renderInst(){$('#instChips').innerHTML=S.search.insts.map(i=>`<button class="chip x" onclick="rmInst('${i.id}')" aria-label="Remove ${esc(i.name)}">${esc(i.name)}</button>`).join('')}
+function rmInst(id){S.search.insts=S.search.insts.filter(i=>i.id!==id);save();renderInst()}
+$('#topicChips').innerHTML=TOPICS.map(t=>`<button class="chip pick" onclick="setBound('search.q','${t}');runSearch()">${t}</button>`).join('');
+const runSearch=()=>S.search.mode==='web'?webSearchProfs():searchProfs();
+
+async function searchProfs(){const q=S.search.q.trim();if(!q)return toast('Type a research topic first');
+ const st=$('#searchStatus'),btn=$('#searchBtn');btn.disabled=true;RESULTS=[];SOURCES=[];renderResults();
+ try{const cc=S.search.country.trim().toUpperCase();const f=[`from_publication_date:${S.search.year||2019}-01-01`];
+  if(S.search.insts.length)f.push('institutions.id:'+S.search.insts.map(i=>i.id).join('|'));if(cc)f.push('institutions.country_code:'+cc);
+  const works=[];for(let page=1;page<=2;page++){st.textContent=`Reading research papers, page ${page}…`;
+   const d=await oa('/works',{search:q,filter:f.join(','),'per-page':100,page,select:'id,title,publication_year,authorships,doi,relevance_score,abstract_inverted_index,primary_location'});
+   works.push(...d.results);if(d.results.length<100)break}
+  if(!works.length){st.textContent='No papers matched. Try broader keywords, an earlier year, or remove filters.';return}
+  const ids=new Set(S.search.insts.map(i=>i.id)),A={};
+  works.forEach((w,i)=>{const rel=w.relevance_score??(works.length-i);(w.authorships||[]).forEach(a=>{if(!a.author?.id)return;const ins=a.institutions||[];
+   const inst=ids.size?ins.find(x=>ids.has(short(x.id))):(cc?ins.find(x=>x.country_code===cc):ins[0]);if((ids.size||cc)&&!inst)return;
+   const wt=(a.author_position==='last'?1.5:a.author_position==='first'?0.8:0.6)*(a.is_corresponding?1.3:1);const id=short(a.author.id);
+   const o=A[id]??={id,name:a.author.display_name,orcid:a.author.orcid,inst:inst?.display_name||'',score:0,papers:[],senior:0};
+   o.score+=rel*wt;if(a.author_position==='last')o.senior++;
+   if(o.papers.length<4)o.papers.push({title:w.title,year:w.publication_year,url:w.doi||w.primary_location?.landing_page_url||w.id,abstract:abs(w.abstract_inverted_index)})})});
+  const list=Object.values(A).sort((a,b)=>b.score-a.score).slice(0,60);const max=list[0]?.score||1;
+  list.forEach(p=>p.fit=Math.round(55+44*Math.sqrt(p.score/max)));
+  for(let i=0;i<list.length;i+=10){st.textContent=`Checking researcher profiles ${Math.min(i+10,list.length)} of ${list.length}…`;
+   await Promise.all(list.slice(i,i+10).map(async p=>{try{const d=await oa('/authors/'+p.id,{select:'works_count,summary_stats,topics,last_known_institutions'});
+    p.works=d.works_count;p.h=d.summary_stats?.h_index;p.topics=(d.topics||[]).slice(0,4).map(t=>t.display_name);p.current=d.last_known_institutions?.[0]?.display_name}catch{}}))}
+  RESULTS=list;st.textContent='';renderResults()}
+ catch(e){st.textContent='Search failed: '+e.message+'. Check your connection, or add your email under Settings → Paper search.'}
+ finally{btn.disabled=false}}
+
+function geminiKey(){return S.settings.provider==='gemini'?SEC.apiKey:(SEC.webKey||'')}
+async function gemWeb(prompt){const key=geminiKey();if(!key)throw new Error('Web search needs a free Gemini key (Settings)');
+ for(let a=0;a<4;a++){const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${WEB_MODEL}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],tools:[{google_search:{}}],generationConfig:{temperature:.2}})});
+  if(r.status===429||r.status===503){await sleep((a+1)*12000);continue}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||'Web search error '+r.status);
+  const c=j.candidates?.[0];const text=(c?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
+  return{text,sources:(c?.groundingMetadata?.groundingChunks||[]).map(g=>g.web).filter(Boolean)}}
+ throw new Error('Search limit hit, wait a minute and try again')}
+async function webSearchProfs(){const q=S.search.q.trim();if(!q)return toast('Type a research topic first');
+ const st=$('#searchStatus'),btn=$('#searchBtn');btn.disabled=true;RESULTS=[];SOURCES=[];renderResults();
+ const where=S.search.insts.length?S.search.insts.map(i=>i.name).join('; '):(S.search.country?`universities in the country with code ${S.search.country.toUpperCase()}`:'strong research universities worldwide');
+ st.textContent='Searching the web for faculty pages… (about 20 seconds)';
+ try{const {text,sources}=await gemWeb(`Use Google Search to find real, currently active university faculty (professors, associate or assistant professors, lab heads) whose research matches: "${q}".
+Where: ${where}.
+The person writing to them: ${S.profile.level}${S.profile.interests?', interested in '+S.profile.interests:''}.
+Find up to 12 different people. Prefer official university faculty, department and lab pages.
+For each person give:
+- name, title, university, department
+- focus: one sentence about their research
+- email: ONLY if you saw it on an official page, otherwise ""
+- url: their official profile or lab page
+- recent: one recent paper or project title, or ""
+- fit: 0-100, how well they match the topic
+Return ONLY a JSON object, no markdown: {"professors":[{"name":"","title":"","university":"","department":"","focus":"","email":"","url":"","recent":"","fit":0}]}`);
+  const list=(parseJSON(text).professors||[]).filter(p=>p.name);
+  RESULTS=list.map(p=>{const id='W'+btoa(unescape(encodeURIComponent((p.name+p.university).toLowerCase()))).replace(/[^a-z0-9]/gi,'').slice(0,14);
+   if(validEmail(p.email)&&!S.emails[id])S.emails[id]=p.email.trim();
+   return{id,name:p.name,title:p.title,inst:p.university,current:p.university,dept:p.department,focus:p.focus,url:p.url,topics:p.focus?[p.focus]:[],papers:p.recent?[{title:p.recent,year:'',url:p.url}]:[],fit:Math.max(1,Math.min(99,+p.fit||70)),web:true}});
+  SOURCES=sources;save(false);st.textContent=RESULTS.length?'':'No faculty found. Try different keywords or a specific university.';renderResults()}
+ catch(e){st.textContent='Web search failed: '+e.message}finally{btn.disabled=false}}
+
+function visibleResults(){const m=+S.search.minWorks||0;return RESULTS.filter(p=>p.web||!S.search.hideJunior||p.works==null||p.works>=m)}
+function renderResults(){const v=visibleResults();$('#resTools').hidden=!RESULTS.length;
+ $('#resCount').textContent=RESULTS[0]?.web?`${v.length} faculty found on the web`:`${v.length} researchers${RESULTS.length-v.length?`, ${RESULTS.length-v.length} hidden as likely students`:''}`;
+ $('#results').innerHTML=v.map(profCard).join('')+(SOURCES.length?`<details class="sources"><summary>Web sources (${SOURCES.length})</summary>${SOURCES.slice(0,20).map(s=>`<a href="${esc(s.uri)}" target="_blank" rel="noopener">${esc(s.title||'source')}</a>`).join('')}</details>`:'')
+  ||(RESULTS.length?'<div class="empty">Everyone is hidden by the student filter. Lower the paper count.</div>':'')}
+const googleEmail=p=>'https://www.google.com/search?q='+encodeURIComponent(`"${p.name}" ${p.current||p.inst||''} email`);
+function profCard(p){const sel=!!S.selected[p.id],done=wasContacted(p.id,S.emails[p.id]);
+ return `<article class="sheet prof ${sel?'sel':''}" id="c-${p.id}">
+ <label class="pick" style="margin:0"><input type="checkbox" ${sel?'checked':''} onchange="toggleSel('${p.id}',this.checked)" aria-label="Select ${esc(p.name)}"></label>
+ <div style="min-width:0">
+  <h3>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>`:esc(p.name)} ${done?'<span class="tag warn">Already emailed</span>':''} ${p.web?'<span class="tag">From the web</span>':''}</h3>
+  <div class="meta">${esc([p.title,p.dept,p.current||p.inst].filter(Boolean).join(', '))}</div>
+  ${p.web?(p.focus?`<p style="margin:8px 0">${esc(p.focus)}</p>`:''):`<div class="chips">${(p.topics||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div>
+  <div class="meta">${p.works??'?'} papers, h-index ${p.h??'?'}, senior author on ${p.senior} matching paper${p.senior===1?'':'s'}</div>`}
+  ${p.papers?.length?`<ul class="papers">${p.papers.slice(0,3).map(w=>`<li><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.title)}</a>${w.year?` <span class="muted">(${w.year})</span>`:''}</li>`).join('')}</ul>`:''}
+  <div class="mailrow"><input type="email" placeholder="professor@university.edu" value="${esc(S.emails[p.id]||'')}" oninput="setEmail('${p.id}',this.value)" aria-label="Email for ${esc(p.name)}">
+   <button class="btn" onclick="findEmail('${p.id}',this)">Find email</button>
+   <a class="btn quiet" target="_blank" rel="noopener" href="${googleEmail(p)}">Google it</a>
+   ${p.orcid?`<a class="btn quiet" target="_blank" rel="noopener" href="${esc(p.orcid)}">ORCID</a>`:''}
+   ${p.web?'':`<a class="btn quiet" target="_blank" rel="noopener" href="https://openalex.org/${p.id}">All papers</a>`}</div>
+ </div>
+ <div class="stamp ${p.fit<75?'lo':''}" title="Research fit"><i><b>${p.fit}%</b><small>fit</small></i></div>
+ </article>`}
+const slim=p=>({id:p.id,name:p.name,title:p.title,inst:p.inst,current:p.current,dept:p.dept,topics:p.topics,papers:(p.papers||[]).slice(0,3),focus:p.focus,url:p.url,fit:p.fit,web:p.web});
+const findP=id=>S.selected[id]||RESULTS.find(x=>x.id===id);
+function toggleSel(id,on){const p=RESULTS.find(x=>x.id===id);if(on&&p)S.selected[id]=slim(p);else delete S.selected[id];save();$('#c-'+id)?.classList.toggle('sel',on)}
+function selectTop(n){visibleResults().slice(0,n).forEach(p=>S.selected[p.id]=slim(p));save();renderResults();toast(`Selected ${Math.min(n,visibleResults().length)} professors`)}
+function setEmail(id,v){S.emails[id]=v.trim();save()}
+
+async function lookupEmail(p){const {text}=await gemWeb(`Use Google Search to find the official work email address of this researcher.
+Name: ${p.name}
+Institution: ${p.current||p.inst||''}
+Research: ${(p.topics||[]).join(', ')||p.focus||''}
+Look at official university directory, department, faculty or lab pages, and their CV. Only return an email you actually saw written on a page. Do not guess a pattern.
+Return ONLY JSON: {"email":"","url":"page where you saw it","title":"their job title"}`);
+ const d=parseJSON(text);return validEmail(d.email)?d:null}
+async function findEmail(id,b){const p=findP(id);if(!p)return;if(!geminiKey()){window.open(googleEmail(p),'_blank');return toast('Add a free Gemini key in Settings to find emails automatically')}
+ b.disabled=true;b.textContent='Searching…';
+ try{const d=await lookupEmail(p);if(d){S.emails[id]=d.email.trim();save();$$(`input[aria-label="Email for ${CSS.escape(p.name)}"]`).forEach(i=>i.value=d.email);toast('Found '+d.email+'. Double-check it on their page')}
+  else toast('No email published online. Try their lab page or Google it',true)}
+ catch(e){toast(e.message,true)}b.disabled=false;b.textContent='Find email'}
+async function findAllEmails(b){const ps=Object.values(S.selected).filter(p=>!validEmail(S.emails[p.id]));if(!ps.length)return toast('Everyone already has an email');
+ if(!geminiKey())return toast('Add a free Gemini key in Settings first',true);b.disabled=true;let n=0;
+ for(const[i,p]of ps.entries()){b.textContent=`Searching ${i+1} of ${ps.length}…`;try{const d=await lookupEmail(p);if(d){S.emails[p.id]=d.email.trim();n++;save();renderSelected()}}catch(e){toast(p.name+': '+e.message,true)}await sleep(2500)}
+ b.disabled=false;b.textContent='Find missing emails';toast(`Found ${n} of ${ps.length} emails. Check them before sending`)}
+
+/* ================= COMPOSE ================= */
+$('#typeSel').innerHTML=Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+function tplVis(){$('#tplBox').hidden=!S.compose.useTpl}
+function toggleManual(){$('#manual').hidden=!$('#manual').hidden}
+function addManual(){const n=$('#mName').value.trim();if(!n)return toast('Add a name first');const id='M'+uid(),inst=$('#mInst').value.trim(),focus=$('#mFocus').value.trim();
+ S.selected[id]={id,name:n,inst,current:inst,focus,topics:focus?[focus]:[],papers:[]};S.emails[id]=$('#mEmail').value.trim();
+ ['#mName','#mEmail','#mInst','#mFocus'].forEach(s=>$(s).value='');save();renderSelected()}
+function renderPromptSel(){$('#promptSel').innerHTML='<option value="">None (default style)</option>'+S.prompts.map(p=>`<option value="${p.id}" ${p.id===S.compose.promptId?'selected':''}>${esc(p.name)}</option>`).join('')}
+function renderCompose(){renderSelected();renderPromptSel();fillBinds()}
+function renderSelected(){const ps=Object.values(S.selected);
+ $('#selList').innerHTML=ps.length?ps.map(p=>`<div class="sel-row"><div class="grow"><b>${esc(p.name)}</b> ${wasContacted(p.id,S.emails[p.id])?'<span class="tag warn">Already emailed</span>':''}<div class="meta">${esc(p.current||p.inst||'')}</div></div>
+  <input type="email" placeholder="Email (needed to send)" value="${esc(S.emails[p.id]||'')}" oninput="setEmail('${p.id}',this.value)" aria-label="Email for ${esc(p.name)}">
+  <button class="btn quiet danger" onclick="delete S.selected['${p.id}'];save();renderSelected()" aria-label="Remove">Remove</button></div>`).join('')
+ :`<div class="empty"><h3>No one selected yet</h3><p>Pick professors in <a href="#" onclick="showTab('find');return false">Find professors</a>, or add someone manually.</p></div>`}
+
+/* AI */
+function baseUrl(){return S.settings.baseUrl||({groq:'https://api.groq.com/openai/v1',openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'}[S.settings.provider]||'')}
+const setGen=m=>$('#genStatus').textContent=m;
+async function ai(prompt){const s=S.settings;if(!SEC.apiKey)throw new Error('No AI key');
+ for(let a=0;a<4;a++){let r;
+  if(s.provider==='gemini')r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent?key=${encodeURIComponent(SEC.apiKey)}`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:.8,responseMimeType:'application/json'}})});
+  else r=await fetch(baseUrl().replace(/\/$/,'')+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+SEC.apiKey},
+    body:JSON.stringify({model:s.model,temperature:.8,messages:[{role:'user',content:prompt}],response_format:{type:'json_object'}})});
+  if(r.status===429||r.status===503){const w=(a+1)*15;setGen(`Free AI speed limit reached, waiting ${w} seconds…`);await sleep(w*1000);continue}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error?.message||('AI error '+r.status));
+  const t=s.provider==='gemini'?(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text).join(''):j.choices?.[0]?.message?.content;
+  if(!t)throw new Error('The AI returned nothing, try again');return t}
+ throw new Error('AI is rate limited. Wait a minute and try again')}
+function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0)throw new Error('AI answer was not in the expected format');return JSON.parse(t.slice(a,b+1))}
+function providerPreset(){const m={gemini:['gemini-2.5-flash',''],groq:['llama-3.3-70b-versatile','https://api.groq.com/openai/v1'],openrouter:['meta-llama/llama-3.3-70b-instruct:free','https://openrouter.ai/api/v1'],openai:['gpt-4o-mini','https://api.openai.com/v1']}[S.settings.provider];
+ setBound('settings.model',m[0]);setBound('settings.baseUrl',m[1]);badges()}
+async function testAI(b){b.disabled=true;try{parseJSON(await ai('Return JSON {"ok":"yes"}'));toast('AI is working')}catch(e){toast(e.message,true)}b.disabled=false}
+
+function studentBlock(){const p=S.profile;return `STUDENT
+Name: ${p.name||'[Your Name]'}
+Email: ${p.email}
+Level: ${p.level}
+School: ${p.school}
+Field: ${p.major}
+Interests: ${p.interests}
+Links: ${p.links}
+Resume:
+${(p.resume||'(none)').slice(0,3500)}`}
+function profBlock(p){const papers=(p.papers||[]).map((w,i)=>`${i+1}. "${w.title}"${w.year?` (${w.year})`:''}${w.abstract?' | abstract: '+w.abstract:''}`).join('\n');
+ return `PROFESSOR
+Name: ${p.name}
+Title: ${p.title||''}
+Institution: ${p.current||p.inst||''}
+Research: ${(p.topics||[]).join(', ')||p.focus||''}
+Papers or projects:
+${papers||p.focus||'(none given)'}`}
+function userPromptBlock(){const ap=activePrompt();return ap?`\nSTUDENT'S SAVED INSTRUCTIONS (follow these closely, they override the default style; never invent facts):\n${ap}\n`:''}
+const RULES=c=>`RULES
+- Language: ${c.lang}. Tone: ${c.tone}. Body at most ${c.length} words.
+- Sound like a real, sincere student. Plain words, short paragraphs. No clichés ("I hope this email finds you well", "I am writing to express", "passionate", "delve", "fascinated"). No em dashes. No flattery overload.
+- Use ONLY facts given about the student. Never invent grades, awards, skills or experience.`;
+function buildPrompt(p){const c=S.compose,cv=S.profile.attachCv&&S.profile.cv;return `Write ONE cold email from a student to a professor.
+
+${studentBlock()}
+
+${profBlock(p)}
+
+GOAL: ${TYPES[c.type]}
+${c.question?`The student specifically wants to say or ask: "${c.question}" (rewrite it naturally and connect it to this professor's work).`:''}
+${c.notes?`Extra instructions for this batch: ${c.notes}`:''}
+${userPromptBlock()}
+${RULES(c)}
+- Reference ONE specific paper or topic of this professor and connect it concretely to the student's background. Don't claim the student studied the paper in depth; say what caught their interest.
+- One clear, low-pressure ask.
+- ${cv?'The CV is attached as a PDF, mention it once.':'Do not mention an attachment.'}
+- Subject: specific, under 9 words.
+- Greeting: "Dear Professor ${lastName(p.name)}," (translated if not English). Sign off with the student's name.
+Return ONLY JSON: {"subject":"...","body":"..."} with \\n for line breaks.`}
+
+function fallbackDraft(p){const pr=S.profile,c=S.compose,w=(p.papers||[])[0],topic=(p.topics||[])[0]||p.focus||'your research';
+ const me=`My name is ${pr.name||'[Your Name]'}, and I am a ${pr.level.toLowerCase()}${pr.school?' at '+pr.school:''}${pr.major?' focusing on '+pr.major:''}.`;
+ const hook=w?`I came across "${w.title}", and it connects closely with my interest in ${pr.interests||topic}.`:`Your work on ${topic} connects closely with my interest in ${pr.interests||'this area'}.`;
+ const ask={research:'Would there be any way for me to contribute to your lab, even with smaller tasks like literature review, data work or coding?',summer:'Are you taking any students for summer research this year? I would be glad to help with any part of a project.',
+  question:'I would be very grateful for a short answer or a pointer to where I should look.',mentorship:'Would you be open to giving me some guidance on my project, even in a short call?',feedback:'Would you be willing to take a quick look and share any feedback?',
+  grad:'Are you planning to take new graduate students, and would my background be a reasonable fit for your group?',remote:'Do you have any remote or part-time research assistant tasks I could help with?',custom:''}[c.type];
+ const cv=pr.attachCv&&pr.cv&&c.type!=='question'?' I have attached my CV for context.':'';
+ return{subject:{research:`Student interested in your ${topic} research`,summer:`Summer research inquiry: ${topic}`,question:`Quick question about your work on ${topic}`,mentorship:`Seeking guidance on a ${topic} project`,feedback:`Feedback request: student project on ${topic}`,grad:`Prospective graduate student: ${topic}`,remote:'Remote research assistant inquiry',custom:`About your work on ${topic}`}[c.type],
+  body:`Dear Professor ${lastName(p.name)},\n\n${me} ${hook}\n\n${c.question?c.question+'\n\n':''}${ask}${cv}\n\nThank you for your time.\n\nBest regards,\n${pr.name||'[Your Name]'}${pr.email?'\n'+pr.email:''}`}}
+async function tplDraft(p){const c=S.compose,pr=S.profile,w=(p.papers||[])[0];
+ const map={prof_last:lastName(p.name),prof_name:p.name,university:p.current||p.inst||'',paper:w?.title||p.focus||'',topic:(p.topics||[])[0]||p.focus||'your research',my_name:pr.name||'[Your Name]',my_school:pr.school,question:c.question,ai_line:''};
+ if(c.tpl.includes('{{ai_line}}')){if(SEC.apiKey)map.ai_line=parseJSON(await ai(`${studentBlock()}\n\n${profBlock(p)}\n${userPromptBlock()}\nWrite 1-2 natural sentences in ${c.lang} (max 45 words) from the student about what in this professor's work caught their interest and how it links to their own background. Only use given facts. No clichés, no em dashes.\nReturn ONLY JSON {"line":"..."}`)).line;
+  else map.ai_line=w?`I came across "${w.title}", and it connects with my interest in ${pr.interests||map.topic}.`:`Your work on ${map.topic} connects with my interest in ${pr.interests||'this area'}.`}
+ const f=c.tpl.replace(/\{\{(\w+)\}\}/g,(m,k)=>map[k]??m),lines=f.split('\n');
+ return /^subject:/i.test(lines[0])?{subject:lines[0].replace(/^subject:\s*/i,''),body:lines.slice(1).join('\n').trim()}:{subject:`About your work on ${map.topic}`,body:f.trim()}}
+async function draftFor(p){if(S.compose.useTpl&&S.compose.tpl.trim())return tplDraft(p);if(!SEC.apiKey)return fallbackDraft(p);
+ const d=parseJSON(await ai(buildPrompt(p)));if(!d.subject||!d.body)throw new Error('AI returned an incomplete draft');return{subject:d.subject,body:String(d.body).replace(/\\n/g,'\n')}}
+async function generateAll(){const ps=Object.values(S.selected);if(!ps.length)return toast('Select professors first');
+ const btn=$('#genBtn');btn.disabled=true;let ok=0;
+ for(const[i,p]of ps.entries()){setGen(`Writing ${i+1} of ${ps.length}: ${p.name}…`);
+  try{const d=await draftFor(p);S.queue.unshift({id:uid(),profId:p.id,prof:p,to:S.emails[p.id]||'',subject:d.subject,body:d.body,kind:S.compose.type,ready:false,created:Date.now()});ok++;save()}
+  catch(e){toast(p.name+': '+e.message,true)}
+  if(SEC.apiKey&&i<ps.length-1)await sleep(S.settings.provider==='gemini'?4500:2000)}
+ btn.disabled=false;setGen(ok?`${ok} draft${ok>1?'s':''} ready to review`:'');if(ok){S.selected={};save();setTimeout(()=>showTab('queue'),600)}}
+
+/* ================= QUEUE & SENDING ================= */
+function wasContacted(id,email){email=(email||'').toLowerCase();return S.history.some(h=>h.profId===id||(email&&(h.to||'').toLowerCase()===email))}
+const Q=id=>S.queue.find(q=>q.id===id);
+const isThread=q=>q.kind==='followup'||q.kind==='reply';
+function qset(id,k,v){const q=Q(id);if(!q)return;q[k]=v;save();if(k==='body'){const el=$(`#wc-${id}`);if(el)el.textContent=words(v)+' words'}if(k==='ready')renderQBar()}
+function renderQBar(){const n=S.queue.filter(q=>q.ready).length;
+ $('#qBar').innerHTML=S.queue.length?`<span class="muted">${S.queue.length} draft${S.queue.length>1?'s':''}, ${n} ready</span>
+  <button class="btn end" onclick="S.queue.forEach(q=>q.ready=true);save();renderQueue()">Mark all ready</button>
+  ${USER?`<button class="btn primary" id="sendAllBtn" onclick="sendAll()" ${n?'':'disabled'}>Send ${n||''} ready</button>`:`<button class="btn primary" onclick="signIn()">Sign in to send from Gmail</button>`}
+  <div id="batch" style="width:100%"></div>`:''}
+function renderQueue(){renderQBar();const el=$('#queueList');
+ if(!S.queue.length){el.innerHTML=`<div class="empty"><h3>Nothing to review</h3><p>Write drafts in <a href="#" onclick="showTab('compose');return false">Write</a> and they'll show up here.</p></div>`;return}
+ const cv=S.profile.attachCv&&S.profile.cv;
+ el.innerHTML=S.queue.map(q=>{const dup=!isThread(q)&&wasContacted(q.profId,q.to);
+  return `<article class="sheet">
+  <div class="q-head"><div class="grow"><h3>${esc(q.prof.name)}</h3><div class="meta">${esc(q.prof.current||q.prof.inst||'')}</div></div>
+   <span class="tag">${isThread(q)?(q.kind==='reply'?'Reply':'Follow-up'):esc(TYPE_LABEL[q.kind]||'')}</span>
+   ${dup?'<span class="tag warn">You already emailed this professor</span>':''}</div>
+  <label>To<input type="email" value="${esc(q.to)}" placeholder="professor@university.edu" oninput="qset('${q.id}','to',this.value.trim())"></label>
+  <label>Subject<input value="${esc(q.subject)}" oninput="qset('${q.id}','subject',this.value)"></label>
+  <label>Message<textarea rows="12" oninput="qset('${q.id}','body',this.value)">${esc(q.body)}</textarea></label>
+  <div class="row wrap" style="margin:-4px 0 14px"><span class="muted small" id="wc-${q.id}">${words(q.body)} words</span>${cv&&!isThread(q)?`<span class="att">Attached: ${esc(cv.name)}</span>`:''}</div>
+  ${q.opened?`<div class="note">Did you send it in Gmail? Press "Mark as sent" so it moves to Messages.</div>`:''}
+  <div class="row wrap">
+   <label class="check" style="margin:0 8px 0 0"><input type="checkbox" ${q.ready?'checked':''} onchange="qset('${q.id}','ready',this.checked)"> Ready to send</label>
+   ${USER?`<button class="btn primary" onclick="sendOne('${q.id}',this)">Send now</button><button class="btn" onclick="openGmail('${q.id}')">Edit in Gmail</button>`
+         :`<button class="btn primary" onclick="openGmail('${q.id}')">Open in Gmail</button>`}
+   <button class="btn quiet" onclick="copyQ('${q.id}')">Copy</button>
+   ${isThread(q)?'':`<button class="btn quiet" onclick="regen('${q.id}',this)">Rewrite</button>`}
+   ${!USER||q.opened?`<button class="btn go" onclick="markSent('${q.id}')">Mark as sent</button>`:''}
+   <button class="btn quiet danger end" onclick="delQ('${q.id}')">Delete</button></div></article>`}).join('')}
+function preSend(q,batch){if(!validEmail(q.to)){if(!batch)toast(`Add a valid email for ${q.prof.name} first`,true);return false}
+ if(!q.subject.trim()||!q.body.trim()){if(!batch)toast('Subject and message cannot be empty',true);return false}
+ if(!isThread(q)&&wasContacted(q.profId,q.to)){if(batch)return false;if(!confirm(`You already emailed ${q.prof.name}. Send again anyway?`))return false}return true}
+
+const b64u=s=>btoa(unescape(encodeURIComponent(s)));
+const wrap76=s=>s.replace(/.{1,76}/g,'$&\r\n');
+function buildMime(q,att){const msgId=`<${uid()}.${Date.now()}@openreach.local>`,name=S.profile.name||USER?.name||'';
+ const H=[`From: =?UTF-8?B?${b64u(name)}?= <${USER.email}>`,`To: ${q.to}`,`Subject: =?UTF-8?B?${b64u(q.subject)}?=`,'MIME-Version: 1.0',`Message-ID: ${msgId}`];
+ if(q.inReplyTo)H.push(`In-Reply-To: ${q.inReplyTo}`,`References: ${q.inReplyTo}`);
+ const text=`Content-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap76(b64u(q.body))}`;let raw;
+ if(att){const bd='b'+uid();H.push(`Content-Type: multipart/mixed; boundary="${bd}"`);
+  raw=`${H.join('\r\n')}\r\n\r\n--${bd}\r\n${text}\r\n--${bd}\r\nContent-Type: ${att.type}; name="${att.name}"\r\nContent-Disposition: attachment; filename="${att.name}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap76(att.b64)}\r\n--${bd}--`}
+ else raw=`${H.join('\r\n')}\r\n${text}`;
+ return{raw:btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),msgId}}
+async function gmailSend(q){const att=S.profile.attachCv&&S.profile.cv&&!isThread(q)?S.profile.cv:null;const m=buildMime(q,att);
+ const r=await gfetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q.threadId?{raw:m.raw,threadId:q.threadId}:{raw:m.raw})});
+ const j=await r.json();return{gmailId:j.id,threadId:j.threadId,msgId:m.msgId}}
+async function sendOne(id,b){const q=Q(id);if(!preSend(q))return;if(!confirm(`Send this email to ${q.to} from ${USER.email}?`))return;
+ b.disabled=true;b.textContent='Sending…';try{markSent(id,await gmailSend(q));toast(`Sent to ${q.prof.name}`)}catch(e){toast('Not sent: '+e.message,true);b.disabled=false;b.textContent='Send now'}}
+let STOP=false;
+async function sendAll(){const L=S.queue.filter(q=>q.ready),ok=L.filter(q=>preSend(q,true)),skip=L.length-ok.length,gap=Math.max(5,+S.settings.gapSec||25);
+ if(!ok.length)return toast(skip?'The ready drafts are missing emails or were already sent to':'Tick "Ready to send" on drafts you have checked',true);
+ if(!confirm(`Send ${ok.length} email${ok.length>1?'s':''} from ${USER.email}, one every ${gap} seconds?${skip?`\n${skip} will be skipped (missing email or already contacted).`:''}`))return;
+ STOP=false;const box=$('#batch');let sent=0;
+ for(const[i,q]of ok.entries()){if(STOP)break;
+  box.innerHTML=`<div class="note row">Sending ${i+1} of ${ok.length} to ${esc(q.prof.name)}… <button class="btn end" onclick="STOP=true">Stop</button></div><div class="progress"><i style="width:${i/ok.length*100}%"></i></div>`;
+  try{const meta=await gmailSend(q);markSent(q.id,meta,true);sent++}catch(e){toast(`${q.prof.name}: ${e.message}`,true);if(/quota|limit|auth|scope|denied/i.test(e.message))break}
+  if(i<ok.length-1)for(let s=gap;s>0&&!STOP;s--){const n=$('#batch .note');if(n)n.firstChild.textContent=`Sent ${sent} of ${ok.length}. Next in ${s}s… `;await sleep(1000)}}
+ renderQueue();toast(`Sent ${sent} email${sent===1?'':'s'}`)}
+function openGmail(id){const q=Q(id);if(!preSend(q))return;
+ window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(q.to)}&su=${encodeURIComponent(q.subject)}&body=${encodeURIComponent(q.body)}${USER?'&authuser='+encodeURIComponent(USER.email):''}`,'_blank');
+ if(S.profile.attachCv&&S.profile.cv&&!isThread(q))toast('Gmail links cannot attach files. Attach your CV in Gmail, or use Send now');
+ q.opened=1;save();renderQueue()}
+function copyQ(id){const q=Q(id);navigator.clipboard.writeText(`Subject: ${q.subject}\n\n${q.body}`).then(()=>toast('Copied'))}
+async function regen(id,b){const q=Q(id);b.disabled=true;b.textContent='Rewriting…';try{const d=await draftFor(q.prof);q.subject=d.subject;q.body=d.body;q.ready=false;save();renderQueue();toast('New version written')}catch(e){toast(e.message,true);b.disabled=false;b.textContent='Rewrite'}}
+function delQ(id){if(!confirm('Delete this draft?'))return;S.queue=S.queue.filter(q=>q.id!==id);save();renderQueue()}
+function markSent(id,meta={},quiet){const q=Q(id);if(!q)return;const now=Date.now();
+ if(q.parent){const h=S.history.find(h=>h.id===q.parent);if(h){h.thread.push({who:'me',at:now,subject:q.subject,body:q.body});if(q.kind==='followup')h.status='Follow-up sent';h.lastAt=now;if(meta.msgId)h.lastMsgId=meta.msgId;if(meta.threadId)h.threadId=meta.threadId}}
+ else S.history.unshift({id:uid(),profId:q.profId,prof:q.prof,to:q.to,subject:q.subject,body:q.body,kind:q.kind,sentAt:now,lastAt:now,status:'Sent',notes:'',thread:[],
+  threadId:meta.threadId||'',lastMsgId:meta.msgId||'',viaApi:!!meta.gmailId,cv:!!(S.profile.attachCv&&S.profile.cv&&meta.gmailId)});
+ S.queue=S.queue.filter(x=>x.id!==id);save();if(!quiet){renderQueue();if(!meta.gmailId)toast('Moved to Messages')}}
+
+/* ================= MESSAGES ================= */
+$('#hFilter').innerHTML+=STATUSES.map(s=>`<option>${s}</option>`).join('');
+function renderHistory(){const H=S.history,rep=H.filter(h=>!['Sent','Follow-up sent','No reply'].includes(h.status)).length,due=H.filter(h=>h.status==='Sent'&&days(h.lastAt)>=7).length;
+ $('#stats').innerHTML=[['Emails sent',H.length],['Replies',rep],['Reply rate',H.length?Math.round(rep/H.length*100)+'%':'0%'],['Follow-ups due',due]].map(([a,b])=>`<div class="stat"><b>${b}</b><span class="muted small">${a}</span></div>`).join('');
+ const f=$('#hFilter').value,s=$('#hSearch').value.toLowerCase();
+ const L=H.filter(h=>(!f||h.status===f)&&(!s||(h.prof.name+' '+(h.prof.current||h.prof.inst||'')+' '+h.subject).toLowerCase().includes(s)));
+ $('#histList').innerHTML=L.length?L.map(h=>{const dueNow=h.status==='Sent'&&days(h.lastAt)>=7,cls={Replied:'ok','Call or interview':'ok',Accepted:'ok',Declined:'red','No reply':'warn'}[h.status]||'';
+  return `<article class="sheet hist"><div style="min-width:0">
+   <div class="row wrap"><h3>${esc(h.prof.name)}</h3><span class="tag ${cls}">${esc(h.status)}</span>${dueNow?'<span class="tag warn">Follow-up due</span>':''}</div>
+   <div class="meta">${esc(h.prof.current||h.prof.inst||'')}, ${esc(h.to)}, ${days(h.sentAt)} day${days(h.sentAt)===1?'':'s'} ago${h.cv?', CV attached':''}</div>
+   <p style="margin:6px 0 0"><b>${esc(h.subject)}</b></p>
+   <details><summary>Conversation (${1+h.thread.length})</summary><div class="who-l">You</div><pre class="mail">${esc(h.body)}</pre>
+    ${h.thread.map(t=>`<div class="who-l">${t.who==='me'?'You':esc(h.prof.name)}, ${fmtDate(t.at)}</div><pre class="mail">${esc(t.body)}</pre>`).join('')}</details>
+   <label>Their reply or your notes<textarea rows="3" placeholder="Paste the professor's reply here" oninput="hset('${h.id}','notes',this.value,1)">${esc(h.notes)}</textarea></label>
+   <div class="row wrap">
+    <select style="max-width:180px;margin:0" onchange="hset('${h.id}','status',this.value)" aria-label="Status">${STATUSES.map(x=>`<option ${x===h.status?'selected':''}>${x}</option>`).join('')}</select>
+    <button class="btn ${dueNow?'primary':''}" onclick="followUp('${h.id}',this)">Write follow-up</button>
+    <button class="btn" onclick="replyTo('${h.id}',this)">Write reply to their message</button>
+    <button class="btn quiet danger end" onclick="delH('${h.id}')">Delete</button></div></div>
+   <div class="postmark" aria-label="Sent ${fmtDate(h.sentAt)}"><span>Sent</span><b>${fmtDate(h.sentAt)}</b></div></article>`}).join('')
+ :`<div class="empty"><h3>No messages yet</h3><p>Emails you send show up here with their replies.</p></div>`}
+function hset(id,k,v,quiet){const h=S.history.find(x=>x.id===id);h[k]=v;save();if(!quiet)renderHistory()}
+function delH(id){if(confirm('Delete this conversation from OpenReach? (It stays in your Gmail.)')){S.history=S.history.filter(h=>h.id!==id);save();renderHistory()}}
+const convo=h=>`ORIGINAL EMAIL (sent ${days(h.sentAt)} days ago):\nSubject: ${h.subject}\n${h.body}\n`+h.thread.map(t=>`\n${t.who==='me'?'STUDENT':'PROFESSOR'} WROTE:\n${t.body}`).join('\n');
+async function followUp(id,b){const h=S.history.find(x=>x.id===id);b.disabled=true;
+ try{const d=SEC.apiKey?parseJSON(await ai(`${studentBlock()}\n\n${profBlock(h.prof)}\n\n${convo(h)}\n${userPromptBlock()}\nThe professor has not replied. Write a SHORT polite follow-up (max 80 words, ${S.compose.lang}) in the same thread. Add one small new detail or make the ask easier. No guilt-tripping.\n${RULES(S.compose)}\nReturn ONLY JSON {"subject":"Re: ...","body":"..."}`))
+  :{subject:'Re: '+h.subject,body:`Dear Professor ${lastName(h.prof.name)},\n\nI wanted to gently follow up on my email from ${days(h.sentAt)} days ago. I know you are busy. Even a short reply, or a pointer to someone in your group, would help me a lot.\n\nThank you again,\n${S.profile.name||'[Your Name]'}`};
+  addThreadDraft(h,d,'followup')}catch(e){toast(e.message,true)}b.disabled=false}
+async function replyTo(id,b){const h=S.history.find(x=>x.id===id);if(!h.notes.trim())return toast("Paste the professor's reply in the box first",true);if(!SEC.apiKey)return toast('Add a free AI key in Settings to write replies',true);
+ b.disabled=true;try{h.thread.push({who:'prof',at:Date.now(),body:h.notes});if(['Sent','Follow-up sent','No reply'].includes(h.status))h.status='Replied';h.notes='';save();
+  const d=parseJSON(await ai(`${studentBlock()}\n\n${profBlock(h.prof)}\n\n${convo(h)}\n${userPromptBlock()}\nWrite the student's reply to the professor's latest message. Answer anything they asked, confirm or propose clear next steps, be thankful without overdoing it. ${S.compose.lang}, max 150 words.\n${RULES(S.compose)}\nReturn ONLY JSON {"subject":"Re: ...","body":"..."}`));
+  addThreadDraft(h,d,'reply')}catch(e){toast(e.message,true)}b.disabled=false}
+function addThreadDraft(h,d,kind){S.queue.unshift({id:uid(),parent:h.id,profId:h.profId,prof:h.prof,to:h.to,subject:d.subject.startsWith('Re:')?d.subject:'Re: '+h.subject,body:String(d.body).replace(/\\n/g,'\n'),kind,threadId:h.threadId||'',inReplyTo:h.lastMsgId||'',ready:false,created:Date.now()});
+ save();toast('Draft added to Review & send');showTab('queue')}
+
+/* ================= DATA ================= */
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+function exportJSON(){download('openreach-backup.json',JSON.stringify(S),'application/json')}
+async function importJSON(f){if(!f)return;try{S=merge(structuredClone(DEF),JSON.parse(await f.text()));save();enterApp();toast('Backup restored')}catch{toast('That file is not an OpenReach backup',true)}}
+function exportCSV(){const r=[['Professor','University','Email','Subject','Status','Sent','Days since']].concat(S.history.map(h=>[h.prof.name,h.prof.current||h.prof.inst,h.to,h.subject,h.status,new Date(h.sentAt).toISOString().slice(0,10),days(h.sentAt)]));
+ download('openreach-messages.csv','﻿'+r.map(x=>x.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n'),'text/csv')}
+function resetAll(){if(!confirm('Delete all OpenReach data and keys on this device? Data synced to your Google account stays there.'))return;
+ Object.keys(localStorage).filter(k=>k.startsWith('openreach')).forEach(k=>localStorage.removeItem(k));location.reload()}
+
+/* start */
+bindAll();
+if(ACCT&&(ACCT==='guest'||USER?.email===ACCT)){loadAcct(ACCT);enterApp()}else showLogin();
+</script>
+</body>
+</html>
