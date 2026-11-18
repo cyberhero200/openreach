@@ -49,6 +49,8 @@ function friendly(e) {
   const t = String(e?.responseText || e?.response || e?.message || e);
   if (e?.authenticationFailed || /535|Username and Password not accepted|AUTHENTICATIONFAILED|Invalid credentials|Application-specific password required/i.test(t))
     return { status: 401, error: 'Gmail did not accept the login. Use your full Gmail address and a 16-letter App Password, not your normal password.' };
+  if (/\b421\b|\b454\b|4\.7\.0|temporar|try again later|too many/i.test(t) && !/5\.4\.5/.test(t))
+    return { status: 429, error: 'Gmail is temporarily limiting sending. Try again in a few minutes.' };
   if (/Daily user sending limit|5\.4\.5/i.test(t))
     return { status: 429, error: 'Gmail daily sending limit reached. Try again tomorrow.' };
   if (/ETIMEDOUT|ECONNRESET|ECONNREFUSED|timeout/i.test(t + ' ' + (e?.code || '')))

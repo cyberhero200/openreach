@@ -9,7 +9,7 @@ Nothing is sent until you review a draft and press **Send**. No Google Cloud pro
 - **Find professors** two ways:
   - **Research papers:** searches 250M+ papers on [OpenAlex](https://openalex.org) and ranks researchers by research fit.
   - **Web search:** uses Gemini with Google Search to find faculty pages and published emails.
-- **Find emails:** one click per professor, or all selected at once.
+- **Free email finder (no key, no paid service):** checks the university's domain on OpenAlex, the professor's ORCID record, author emails in papers (Europe PMC), free web search (DuckDuckGo, Brave) and their own faculty and lab pages. It reads hidden formats like `name [at] uni [dot] edu` and Cloudflare-protected emails, then scores each address by name and university domain and shows how sure it is. Works one professor at a time or for all selected at once.
 - **Two ways to write:**
   - **AI writes each one** from your profile, resume and saved prompts, plus each professor's papers. Pick the message type, tone, length and language.
   - **Use my draft:** write your email once with placeholders like `{{professor_last_name}}`, `{{paper_name}}` and `{{student_context}}`. The AI fills them in for every professor and keeps your wording. Five ready-made examples are included.
@@ -28,6 +28,8 @@ api/login.js          checks a Gmail address + App Password
 api/send.js           sends one approved email through Gmail SMTP
 api/replies.js        finds replies from professors you emailed (Gmail IMAP)
 api/sync.js           saves/loads your data under the "OpenReach" Gmail label
+api/find-email.js     free email finder (OpenAlex, ORCID, Europe PMC, web search, faculty pages)
+api/health.js         self-test used by Settings → Check sending
 api/ai.js             relays AI calls for providers that block browsers (CORS)
 api/_lib.js           shared helpers
 privacy.html, terms.html
@@ -78,7 +80,7 @@ Without a key, OpenReach still works with simple templates.
 
 ## Limits worth knowing
 
-- A free Gmail account can send about 500 emails a day. OpenReach spaces batch sends 25 seconds apart by default.
+- A free Gmail account can send to 500 recipients a day (Google Workspace: 2,000). OpenReach adds your own daily limit (default 100), shows how many you've sent in the last 24 hours, spaces batch sends 40 seconds apart, and retries once if Gmail asks it to slow down.
 - Vercel's free plan accepts requests up to 4.5 MB, so keep the CV PDF under 2.5 MB. The app enforces this.
 
 ## If emails don't send

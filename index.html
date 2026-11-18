@@ -412,7 +412,10 @@ ol.steps{padding-left:20px;margin:6px 0 0}ol.steps li{margin:4px 0}
     </div>
     <div class="sheet">
       <h3>Sending</h3>
-      <label>Seconds between emails when sending all <span class="hint">(spacing them out keeps you out of spam filters)</span><input type="number" min="5" max="300" data-bind="settings.gapSec"></label>
+      <div class="grid">
+        <label>Seconds between emails when sending all <span class="hint">(spacing them out keeps you out of spam filters)</span><input type="number" min="5" max="600" data-bind="settings.gapSec"></label>
+        <label>Your daily limit <span class="hint">(Gmail allows 500 a day; staying well under keeps your account safe)</span><input type="number" min="1" max="480" data-bind="settings.dailyCap"></label>
+      </div>
     </div>
     <div class="sheet">
       <h3>Gmail connection</h3>
@@ -468,11 +471,11 @@ const STATUSES=['Sent','Follow-up sent','Replied','Call or interview','Accepted'
 /* ================= STATE ================= */
 const DEF={updatedAt:0,
  profile:{name:'',email:'',level:'High school student',school:'',major:'',interests:'',resume:'',links:'',grade:'',location:'',courses:'',experience:'',cv:null,attachCv:true},
- settings:{provider:'gemini',model:'auto',baseUrl:'',oaMail:'',gapSec:'25',resolved:{},models:[],webModel:''},
+ settings:{provider:'gemini',model:'auto',baseUrl:'',oaMail:'',gapSec:'40',dailyCap:'100',resolved:{},models:[],webModel:''},
  search:{mode:'papers',q:'',insts:[],country:'',year:'2019',hideJunior:true,minWorks:'20'},
  compose:{mode:'ai',type:'research',question:'',notes:'',tone:'Respectful & warm',length:'150',lang:'English',useTpl:false,promptId:'',
   tpl:'Subject: Question about your work on {{topic}}\n\nDear Professor {{prof_last}},\n\nMy name is {{my_name}}, a student at {{my_school}}. {{ai_line}}\n\n{{question}}\n\nWould you have 10 minutes for a short call, or could you point me to a good place to start?\n\nThank you for your time,\n{{my_name}}'},
- prompts:[],drafts:[],activeDraft:'',selected:{},emails:{},queue:[],history:[]};
+ prompts:[],drafts:[],activeDraft:'',selected:{},emails:{},emailMeta:{},queue:[],history:[]};
 function merge(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))merge(a[k],b[k]);else a[k]=b[k]}return a}
 const readLS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 let SEC=merge({apiKey:'',webKey:'',oaKey:'',gmail:'',appPass:''},readLS('openreach:secrets',{}));
@@ -513,8 +516,8 @@ function showTab(t){$$('.tab').forEach(s=>s.hidden=s.id!=='tab-'+t);$$('.rail .n
 $$('.rail .nav').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 /* ================= GMAIL ACCOUNT (App Password, no Google Cloud needed) ================= */
-async function api(path,body={}){let r;
- try{r=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:SEC.gmail,appPassword:SEC.appPass,...body})})}
+async function api(path,body={},{creds=true}={}){let r;
+ try{r=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds?{email:SEC.gmail,appPassword:SEC.appPass,...body}:body)})}
  catch{throw new Error(location.protocol==='file:'?'Open the site from its Vercel link. Email features do not work from a file on your computer':'Could not reach the server. Check your internet and try again')}
  const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
  if(!j){
@@ -702,32 +705,44 @@ function profCard(p){const sel=!!S.selected[p.id],done=wasContacted(p.id,S.email
    <button class="btn" onclick="findEmail('${p.id}',this)">Find email</button>
    <a class="btn quiet" target="_blank" rel="noopener" href="${googleEmail(p)}">Google it</a>
    ${p.orcid?`<a class="btn quiet" target="_blank" rel="noopener" href="${esc(p.orcid)}">ORCID</a>`:''}
-   ${p.web?'':`<a class="btn quiet" target="_blank" rel="noopener" href="https://openalex.org/${p.id}">All papers</a>`}</div>
+   ${p.web?'':`<a class="btn quiet" target="_blank" rel="noopener" href="https://openalex.org/${p.id}">All papers</a>`}<div data-meta="${p.id}" style="width:100%">${emailMetaHtml(p.id)}</div></div>
  </div>
  <div class="stamp ${p.fit<75?'lo':''}" title="Research fit"><i><b>${p.fit}%</b><small>fit</small></i></div>
  </article>`}
-const slim=p=>({id:p.id,name:p.name,title:p.title,inst:p.inst,current:p.current,dept:p.dept,topics:p.topics,papers:(p.papers||[]).slice(0,3),focus:p.focus,url:p.url,fit:p.fit,web:p.web});
+const slim=p=>({id:p.id,orcid:p.orcid,name:p.name,title:p.title,inst:p.inst,current:p.current,dept:p.dept,topics:p.topics,papers:(p.papers||[]).slice(0,3),focus:p.focus,url:p.url,fit:p.fit,web:p.web});
 const findP=id=>S.selected[id]||RESULTS.find(x=>x.id===id);
 function toggleSel(id,on){const p=RESULTS.find(x=>x.id===id);if(on&&p)S.selected[id]=slim(p);else delete S.selected[id];save();$('#c-'+id)?.classList.toggle('sel',on)}
 function selectTop(n){visibleResults().slice(0,n).forEach(p=>S.selected[p.id]=slim(p));save();renderResults();toast(`Selected ${Math.min(n,visibleResults().length)} professors`)}
-function setEmail(id,v){S.emails[id]=v.trim();save()}
+function setEmail(id,v){S.emails[id]=v.trim();if(S.emailMeta?.[id]){S.emailMeta[id].src='you';S.emailMeta[id].conf='high';S.emailMeta[id].alts=[];S.emailMeta[id].url=''}save()}
 
-async function lookupEmail(p){const {text}=await webSearch(`Use Google Search to find the official work email address of this researcher.
+async function lookupEmail(p){
+ // 1) free finder on our own server: OpenAlex, ORCID, Europe PMC, DuckDuckGo/Brave, faculty pages
+ let free=null,freeErr=null;
+ try{free=await api('find-email',{name:p.name,institution:p.current||p.inst||'',openalexId:/^A\d+$/.test(p.id)?p.id:'',orcid:p.orcid||'',pageUrl:p.url||''},{creds:false})}catch(e){freeErr=e}
+ if(free?.best)return{email:free.best.email,conf:free.best.confidence,src:free.best.source,url:free.best.url,alts:(free.candidates||[]).slice(1,4).map(c=>c.email)};
+ // 2) optional extra: Gemini with Google Search, if the user added a key
+ if(geminiKey()){try{const {text}=await webSearch(`Use Google Search to find the official work email address of this researcher.
 Name: ${p.name}
 Institution: ${p.current||p.inst||''}
 Research: ${(p.topics||[]).join(', ')||p.focus||''}
 Look at official university directory, department, faculty or lab pages, and their CV. Only return an email you actually saw written on a page. Do not guess a pattern.
-Return ONLY JSON: {"email":"","url":"page where you saw it","title":"their job title"}`);
- const d=parseJSON(text);return validEmail(d.email)?d:null}
-async function findEmail(id,b){const p=findP(id);if(!p)return;if(!geminiKey()){window.open(googleEmail(p),'_blank');return toast('Add a free Gemini key in Settings to find emails automatically')}
- b.disabled=true;b.textContent='Searching…';
- try{const d=await lookupEmail(p);if(d){S.emails[id]=d.email.trim();save();$$(`input[aria-label="Email for ${CSS.escape(p.name)}"]`).forEach(i=>i.value=d.email);toast('Found '+d.email+'. Double-check it on their page')}
-  else toast('No email published online. Try their lab page or Google it',true)}
+Return ONLY JSON: {"email":"","url":"page where you saw it"}`);const d=parseJSON(text);if(validEmail(d.email))return{email:d.email.trim(),conf:'medium',src:'AI web search',url:d.url||'',alts:[]}}catch{}}
+ if(free?.candidates?.length)return{email:free.candidates[0].email,conf:'low',src:free.candidates[0].source,url:free.candidates[0].url,alts:free.candidates.slice(1,4).map(c=>c.email)};
+ if(freeErr&&!free)throw freeErr;return null}
+function emailMetaHtml(id){const m=(S.emailMeta||{})[id];if(!m||!S.emails[id])return'';
+ const col={high:'var(--sage)',medium:'var(--amber)',low:'var(--stamp)'}[m.conf]||'var(--mut)';
+ return `<div class="small" style="margin-top:4px;width:100%"><span style="color:${col};font-weight:600">${m.conf==='high'?'Very likely correct':m.conf==='medium'?'Probably correct':'Unsure, please check'}</span> <span class="muted">· found via ${esc(m.src)}${m.url?` · <a href="${esc(m.url)}" target="_blank" rel="noopener">see where</a>`:''}</span>${(m.alts||[]).length?` <span class="muted">· other options:</span> ${m.alts.map(a=>`<button class="chip pick" style="padding:1px 8px" onclick="pickAlt('${id}','${esc(a)}')">${esc(a)}</button>`).join(' ')}`:''}</div>`}
+function pickAlt(id,a){S.emails[id]=a;S.emailMeta[id]={...S.emailMeta[id],conf:'medium',src:'your choice',alts:(S.emailMeta[id].alts||[]).filter(x=>x!==a)};save();refreshEmailUI(id)}
+function refreshEmailUI(id){const p=findP(id);if(!p)return;$$(`input[aria-label="Email for ${CSS.escape(p.name)}"]`).forEach(i=>i.value=S.emails[id]||'');$$(`[data-meta="${id}"]`).forEach(e=>e.innerHTML=emailMetaHtml(id))}
+async function findEmail(id,b){const p=findP(id);if(!p)return;b.disabled=true;b.textContent='Searching…';
+ try{const d=await lookupEmail(p);if(d){S.emails[id]=d.email;S.emailMeta=S.emailMeta||{};S.emailMeta[id]={conf:d.conf,src:d.src,url:d.url,alts:d.alts};save();refreshEmailUI(id);toast(`Found ${d.email}`)}
+  else toast(`No public email found for ${p.name}. Try "Google it" or their lab page`,true)}
  catch(e){toast(e.message,true)}b.disabled=false;b.textContent='Find email'}
 async function findAllEmails(b){const ps=Object.values(S.selected).filter(p=>!validEmail(S.emails[p.id]));if(!ps.length)return toast('Everyone already has an email');
- if(!geminiKey())return toast('Add a free Gemini key in Settings first',true);b.disabled=true;let n=0;
- for(const[i,p]of ps.entries()){b.textContent=`Searching ${i+1} of ${ps.length}…`;try{const d=await lookupEmail(p);if(d){S.emails[p.id]=d.email.trim();n++;save();renderSelected()}}catch(e){toast(p.name+': '+e.message,true)}await sleep(2500)}
- b.disabled=false;b.textContent='Find missing emails';toast(`Found ${n} of ${ps.length} emails. Check them before sending`)}
+ b.disabled=true;let n=0,done=0;S.emailMeta=S.emailMeta||{};
+ const work=async p=>{try{const d=await lookupEmail(p);if(d){S.emails[p.id]=d.email;S.emailMeta[p.id]={conf:d.conf,src:d.src,url:d.url,alts:d.alts};n++;save();renderSelected()}}catch(e){console.warn(p.name,e)}done++;b.textContent=`Searching ${done} of ${ps.length}…`};
+ const queue=[...ps];await Promise.all([0,1,2].map(async()=>{while(queue.length)await work(queue.shift())}));
+ b.disabled=false;b.textContent='Find missing emails';toast(`Found ${n} of ${ps.length} emails. Check the ones marked "Unsure"`)}
 
 /* ================= COMPOSE ================= */
 $('#typeSel').innerHTML=Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
@@ -744,7 +759,8 @@ function renderCompose(){renderSelected();renderPromptSel();fillBinds();tplVis()
 function renderSelected(){const ps=Object.values(S.selected);
  $('#selList').innerHTML=ps.length?ps.map(p=>`<div class="sel-row"><div class="grow"><b>${esc(p.name)}</b> ${wasContacted(p.id,S.emails[p.id])?'<span class="tag warn">Already emailed</span>':''}<div class="meta">${esc(p.current||p.inst||'')}</div></div>
   <input type="email" placeholder="Email (needed to send)" value="${esc(S.emails[p.id]||'')}" oninput="setEmail('${p.id}',this.value)" aria-label="Email for ${esc(p.name)}">
-  <button class="btn quiet danger" onclick="delete S.selected['${p.id}'];save();renderSelected()" aria-label="Remove">Remove</button></div>`).join('')
+  <button class="btn" onclick="findEmail('${p.id}',this)">Find email</button>
+  <button class="btn quiet danger" onclick="delete S.selected['${p.id}'];save();renderSelected()" aria-label="Remove">Remove</button><div data-meta="${p.id}" style="width:100%">${emailMetaHtml(p.id)}</div></div>`).join('')
  :`<div class="empty"><h3>No one selected yet</h3><p>Pick professors in <a href="#" onclick="showTab('find');return false">Find professors</a>, or add someone manually.</p></div>`}
 
 /* AI: any provider, auto-picks the best working model */
@@ -978,7 +994,8 @@ const Q=id=>S.queue.find(q=>q.id===id);
 const isThread=q=>q.kind==='followup'||q.kind==='reply';
 function qset(id,k,v){const q=Q(id);if(!q)return;q[k]=v;save();if(k==='body'){const el=$(`#wc-${id}`);if(el)el.textContent=words(v)+' words'}if(k==='ready')renderQBar()}
 function renderQBar(){const n=S.queue.filter(q=>q.ready).length;
- $('#qBar').innerHTML=(S.queue.length&&!connected()?`<div class="note warn" style="width:100%">Gmail isn't connected, so OpenReach can't send by itself. <a href="#" onclick="showLogin();return false">Connect Gmail</a> to send with one click and attach your CV. Without it, "Open in Gmail" only opens a draft that you send yourself.</div>`:'')+(S.queue.length?`<span class="muted">${S.queue.length} draft${S.queue.length>1?'s':''}, ${n} ready</span>
+ const used=sentLast24h(),cap=+S.settings.dailyCap||100;
+ $('#qBar').innerHTML=(S.queue.length&&connected()?`<div class="small muted" style="width:100%">Sent in the last 24 hours: <b style="color:${used>=cap?'var(--stamp)':'var(--ink)'}">${used} of ${cap}</b> (your daily limit, change it in Settings; Gmail's own maximum is 500)</div>`:'')+(S.queue.length&&!connected()?`<div class="note warn" style="width:100%">Gmail isn't connected, so OpenReach can't send by itself. <a href="#" onclick="showLogin();return false">Connect Gmail</a> to send with one click and attach your CV. Without it, "Open in Gmail" only opens a draft that you send yourself.</div>`:'')+(S.queue.length?`<span class="muted">${S.queue.length} draft${S.queue.length>1?'s':''}, ${n} ready</span>
   <button class="btn end" onclick="S.queue.forEach(q=>q.ready=true);save();renderQueue()">Mark all ready</button>
   ${connected()?`<button class="btn primary" id="sendAllBtn" onclick="sendAll()" ${n?'':'disabled'}>Send ${n||''} ready</button>`:`<button class="btn primary" onclick="showLogin()">Connect Gmail to send</button>`}
   <div id="batch" style="width:100%"></div>`:'')}
@@ -1012,16 +1029,22 @@ function preSend(q,batch){if(!validEmail(q.to)){if(!batch)toast(`Add a valid ema
 function attachmentFor(q){const c=S.profile.cv;return S.profile.attachCv&&c&&!isThread(q)?{name:c.name,type:c.type,b64:c.b64}:null}
 async function gmailSend(q){const j=await api('send',{to:q.to,subject:q.subject,text:q.body,fromName:S.profile.name||'',attachment:attachmentFor(q),inReplyTo:q.inReplyTo||'',references:q.references||q.inReplyTo||''});
  return{msgId:j.messageId,api:true}}
-async function sendOne(id,b){const q=Q(id);if(!preSend(q))return;if(!confirm(`Send this email to ${q.to} from ${USER.email}?`))return;
+async function sendOne(id,b){const q=Q(id);if(!preSend(q))return;if(!capLeft()&&!confirm(`You reached your daily limit of ${S.settings.dailyCap}. Send anyway?`))return;if(!confirm(`Send this email to ${q.to} from ${USER.email}?`))return;
  b.disabled=true;b.textContent='Sending…';try{markSent(id,await gmailSend(q));toast(`Sent to ${q.prof.name}`)}catch(e){q.err=e.message;save();renderQueue();toast('Not sent: '+e.message,true)}}
+function sentLast24h(){const since=Date.now()-864e5;let n=0;for(const h of S.history){if(h.viaApi&&h.sentAt>since)n++;for(const t of h.thread||[])if(t.who==='me'&&t.at>since)n++}return n}
+const capLeft=()=>Math.max(0,(+S.settings.dailyCap||100)-sentLast24h());
 let STOP=false;
-async function sendAll(){const L=S.queue.filter(q=>q.ready),ok=L.filter(q=>preSend(q,true)),skip=L.length-ok.length,gap=Math.max(5,+S.settings.gapSec||25);
+async function sendAll(){const L=S.queue.filter(q=>q.ready),ok0=L.filter(q=>preSend(q,true)),left=capLeft(),ok=ok0.slice(0,left),skip=L.length-ok0.length,gap=Math.max(5,+S.settings.gapSec||40);
+ if(!left)return toast(`You reached your daily limit of ${S.settings.dailyCap}. It frees up gradually over the next 24 hours`,true);
+ if(ok0.length>left)toast(`Only ${left} more today (your daily limit). The rest stay ready for tomorrow`);
  if(!ok.length)return toast(skip?'The ready drafts are missing emails or go to professors you already emailed':'Tick "Ready to send" on drafts you have checked',true);
  if(!confirm(`Send ${ok.length} email${ok.length>1?'s':''} from ${USER.email}, one every ${gap} seconds?${skip?`\n${skip} will be skipped (missing email or already contacted).`:''}`))return;
  STOP=false;const box=$('#batch');let sent=0;
  for(const[i,q]of ok.entries()){if(STOP)break;
   box.innerHTML=`<div class="note row">Sending ${i+1} of ${ok.length} to ${esc(q.prof.name)}… <button class="btn end" onclick="STOP=true">Stop</button></div><div class="progress"><i style="width:${i/ok.length*100}%"></i></div>`;
-  try{markSent(q.id,await gmailSend(q),true);sent++}catch(e){q.err=e.message;save();toast(`${q.prof.name}: ${e.message}`,true);if(/limit|login|App Password|reach|not found/i.test(e.message))break}
+  let ok1=false;for(let t=0;t<2&&!ok1;t++){try{markSent(q.id,await gmailSend(q),true);sent++;ok1=true}catch(e){
+    if(t===0&&/temporar|try again|timeout|421|454/i.test(e.message)){const n=$('#batch .note');if(n)n.firstChild.textContent='Gmail asked to slow down, retrying in 60s… ';await sleep(60000);continue}
+    q.err=e.message;save();toast(`${q.prof.name}: ${e.message}`,true);if(/limit|login|App Password|reach|not found|blocking/i.test(e.message))STOP=true;break}}
   if(i<ok.length-1)for(let s=gap;s>0&&!STOP;s--){const n=$('#batch .note');if(n)n.firstChild.textContent=`Sent ${sent} of ${ok.length}. Next in ${s}s… `;await sleep(1000)}}
  renderQueue();toast(`Sent ${sent} email${sent===1?'':'s'}`)}
 function openGmail(id){const q=Q(id);if(!preSend(q))return;
